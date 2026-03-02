@@ -1,5 +1,4 @@
-import asyncio, json, logging, serial, time
-import websockets
+import asyncio, json, logging, serial, time, websockets
 from mdp_protocol import *
 
 logging.basicConfig(level=logging.INFO,
@@ -11,12 +10,12 @@ SERIAL_BAUD = 115200 # Confirm DIP switch setting on unit
 
 class SLS960:
  def __init__(self, port, baud):
-  self.ser = serial.Serial(
-   port=port, baudrate=baud,
-   bytesize=serial.EIGHTBITS,
-   parity=serial.PARITY_NONE,
-   stopbits=serial.STOPBITS_ONE,
-   timeout=1)
+  #self.ser = serial.Serial(
+   ##port=port, baudrate=baud,
+   #bytesize=serial.EIGHTBITS,
+   #parity=serial.PARITY_NONE,
+   #stopbits=serial.STOPBITS_ONE,
+   #timeout=1)
   log.info(f"SLS960 opened on {port} at {baud} baud")
 
  def send(self, data: bytes):
@@ -81,50 +80,48 @@ async def handle(websocket):
  log.info(f"Client connected: {websocket.remote_address}")
  async for msg in websocket:
   try:
-  data = json.loads(msg)
-  command = data.get("command", "")
-  payload = data.get("payload", {})
-  log.info(f"CMD: {command} | {payload}")
+   data = json.loads(msg)
+   command = data.get("command", "")
+   payload = data.get("payload", {})
+   log.info(f"CMD: {command} | {payload}")
 
-  if command == "unit_status":
-   uid = payload["unit_id"]
-   status = payload.get("status", "off")
-   r, g, b = STATUS_COLOUR.get(status, (255,255,255))
-   for ch in UNIT_CHANNEL_MAP.get(uid, []):
-    sls.rgb(ch, r, g, b)
-
-  elif command == "sync_all":
-   # SUSPEND first — all channels update simultaneously
-   sls.suspend()
-   for uid, status in payload.get("units", {}).items():
+   if command == "unit_status":
+    uid = payload["unit_id"]
+    status = payload.get("status", "off")
     r, g, b = STATUS_COLOUR.get(status, (255,255,255))
     for ch in UNIT_CHANNEL_MAP.get(uid, []):
      sls.rgb(ch, r, g, b)
-    sls.resume() # All channels light at once — no flicker
 
-  elif command == "floor_highlight":
-   col = payload.get("colour", [100, 150, 255])
-   sls.suspend()
-   for ch in FLOOR_CHANNEL_MAP.get(payload.get("floor",0), []):
-    sls.rgb(ch, *col)
-   sls.resume()
-
-  elif command == "set_scene":
-   scene = payload.get("scene", "idle")
-   if scene == "blackout":
-    sls.blackout()
-
-   elif scene == "idle":
-    # Warm white across all channels
+   elif command == "sync_all":
+    # SUSPEND first — all channels update simultaneously
     sls.suspend()
-    for ch in range(960):
-     sls.rgb(ch, 255, 220, 160)
+    for uid, status in payload.get("units", {}).items():
+     r, g, b = STATUS_COLOUR.get(status, (255,255,255))
+     for ch in UNIT_CHANNEL_MAP.get(uid, []):
+      sls.rgb(ch, r, g, b)
+     sls.resume() # All channels light at once — no flicker
+
+   elif command == "floor_highlight":
+    col = payload.get("colour", [100, 150, 255])
+    sls.suspend()
+    for ch in FLOOR_CHANNEL_MAP.get(payload.get("floor",0), []):
+     sls.rgb(ch, *col)
     sls.resume()
 
-   elif scene == "presentation":
-    # Integrator to define: trigger pseudo-address group
-    # or run a pre-programmed sequence here
-    pass
+   elif command == "set_scene":
+    scene = payload.get("scene", "idle")
+    if scene == "blackout":
+     sls.blackout()
+    elif scene == "idle":
+     # Warm white across all channels
+     sls.suspend()
+     for ch in range(960):
+      sls.rgb(ch, 255, 220, 160)
+     sls.resume()
+    elif scene == "presentation":
+     # Integrator to define: trigger pseudo-address group
+     # or run a pre-programmed sequence here
+     pass
 
    elif command == "blackout":
     sls.blackout()
@@ -135,18 +132,16 @@ async def handle(websocket):
 
    elif command == "ping":
     uptime = int(time.time() - START_TIME)
+    await websocket.send(json.dumps(
+     {"status":"ok","command":"ping","uptime":uptime}))
+    continue
 
+   await websocket.send(json.dumps({"status": "ok", "command": command}))
+
+  except Exception as e:
+   log.error(f"Error: {e}")
    await websocket.send(json.dumps(
-   {"status":"ok","command":"ping","uptime":uptime}))
-continue
-
-await websocket.send(json.dumps(
-{"status": "ok", "command": command}))
-except Exception as e:
-log.error(f"Error: {e}")
-
-await websocket.send(json.dumps(
-{"status":"error","message":str(e)}))
+    {"status":"error","message":str(e)}))
 
 async def main():
  log.info("Bridge starting — ws://0.0.0.0:8765")
