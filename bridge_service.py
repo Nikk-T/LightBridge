@@ -14,6 +14,10 @@ CONFIG_PATH = Path("config/maps.yaml")
 SERIAL_PORT = "/dev/ttyUSB0" # Confirm name of port running ls /dev* command. Supposed to be /dev/ttyUSB0
 SERIAL_BAUD = 115200         # Confirm DIP switch setting on unit
 
+UNIT_CHANNEL_MAP = {}
+FLOOR_CHANNEL_MAP = {}
+STATUS_COLOUR = {}
+
 class SLS960:
  def __init__(self, port, baud):
   self.ser = serial.Serial(
@@ -46,31 +50,6 @@ class SLS960:
  def keepalive(self):
   self.send(cmd_nop(0))
 
-# ── Channel mapping — update with actual wiring diagram ───────
-# SLS960 addresses are 0-BASED
-# Serial 0 = 0-119, Serial 1 = 120-239 ... Serial 7 = 840-959
-
-# UNIT_CHANNEL_MAP, STATUS_COLOUR
-# "A101": [0, 1, 2],
-# "A102": [3, 4, 5],
-# "A103": [6, 7, 8],
-# "B201": [9, 10, 11],
-# # Complete this map with integrator once model is wired
-#}
-
-FLOOR_CHANNEL_MAP = {
- 1: list(range(0, 30)),
- 2: list(range(120, 150)),
- # Complete with integrator
-}
-
-#STATUS_COLOUR = {
-# "available": (50, 255, 100),
-# "selected": (100, 150, 255),
-# "reserved": (255, 200, 0),
-# "sold": (255, 50, 50),
-# "off": (0, 0, 0),
-#}
 
 def load_maps(config_path=CONFIG_PATH):
   if not config_path.exists():
@@ -78,29 +57,34 @@ def load_maps(config_path=CONFIG_PATH):
     
   with open(config_path, "r") as f:
     config = yaml.safe_load(f)
-    log.info(config)
+
   #Unit map
   unit_channel_map = config.get("unit_channel_map", {})
   
   #Floor map
-  #floor_channel_map = {}
-  # for floor, range_data in config.get("floor_channel_map", {}).items():
-  #   start = range_data["start"]
-  #   end = range_data["end"]
-  #   floor_channel_map{int(floor)] = list(range(start, end))
+  floor_channel_map = {}
+  for floor, range_data in config.get("floor_channel_map", {}).items():
+    if not isinstance(range_data, list) or len(range_data) !=2:
+      raise ValueError(
+        f"Invalid floor_channel_map entry for florr {floor}. "
+        f"Expected [start, end], got: {range_data}"
+      )
      
+    start, end = map(int, range_data)
+    floor_channel_map[int(floor)] = list(range(start, end+1))
+    
   #Convert colors to tuples
   status_colour = {
    key: tuple(value)
    for key, value in config.get("status_colour", {}).items()
   }
-  return unit_channel_map, status_colour #floor_channel_map, 
+  return unit_channel_map, floor_channel_map, status_colour 
   
 sls = SLS960(SERIAL_PORT, SERIAL_BAUD)
 START_TIME = time.time()
 
 async def keepalive_loop():
- """Send MDP_NOP every 10 min to prevent 30-min SLS960 idle timeout."""
+ #Send MDP_NOP every 10 min to prevent 30-min SLS960 idle timeout.
  while True:
   await asyncio.sleep(600)
   sls.keepalive()
@@ -129,7 +113,7 @@ async def handle(websocket):
      r, g, b = STATUS_COLOUR.get(status, (255,255,255))
      for ch in UNIT_CHANNEL_MAP.get(uid, []):
       sls.rgb(ch, r, g, b)
-     sls.resume() # All channels light at once — no flicker
+    sls.resume() # All channels light at once — no flicker
 
    elif command == "floor_highlight":
     col = payload.get("colour", [100, 150, 255])
@@ -174,12 +158,17 @@ async def handle(websocket):
     {"status":"error","message":str(e)}))
 
 async def main():
+ global UNIT_CHANNEL_MAP, FLOOR_CHANNEL_MAP, STATUS_COLOUR
+ 
  log.info("Bridge starting — ws://0.0.0.0:8765")
- UNIT_CHANNEL_MAP, STATUS_COLOUR = load_maps()
- log.info(CONFIG_PATH)
- log.info(UNIT_CHANNEL_MAP)
- log.info(FLOOR_CHANNEL_MAP)
- log.info(STATUS_COLOUR)
+ 
+ UNIT_CHANNEL_MAP, FLOOR_CHANNEL_MAP, STATUS_COLOUR = load_maps()
+ 
+ log.info(f"Configuration loaded from file: {CONFIG_PATH}")
+ log.info(f"{len(UNIT_CHANNEL_MAP)} units successfully loaded")
+ log.info(f"{len(FLOOR_CHANNEL_MAP)} floors successfully loaded")
+ log.info(f"{len(STATUS_COLOUR)} state color combinations successfully loaded")
+ 
  async with websockets.serve(handle, "0.0.0.0", 8765):
   await asyncio.gather(
    asyncio.Future(), # run forever
