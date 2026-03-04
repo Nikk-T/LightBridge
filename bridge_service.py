@@ -5,17 +5,17 @@ logging.basicConfig(level=logging.INFO,
  format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("bridge")
 
-SERIAL_PORT = "/dev/ttyUSB0"
-SERIAL_BAUD = 115200 # Confirm DIP switch setting on unit
+SERIAL_PORT = "/dev/ttyUSB0" # Confirm name of port running ls /dev* command. Supposed to be /dev/ttyUSB0
+SERIAL_BAUD = 115200         # Confirm DIP switch setting on unit
 
 class SLS960:
  def __init__(self, port, baud):
-  #self.ser = serial.Serial(
-   ##port=port, baudrate=baud,
-   #bytesize=serial.EIGHTBITS,
-   #parity=serial.PARITY_NONE,
-   #stopbits=serial.STOPBITS_ONE,
-   #timeout=1)
+  self.ser = serial.Serial(
+   port=port, baudrate=baud,
+   bytesize=serial.EIGHTBITS,
+   parity=serial.PARITY_NONE,
+   stopbits=serial.STOPBITS_ONE,
+   timeout=1)
   log.info(f"SLS960 opened on {port} at {baud} baud")
 
  def send(self, data: bytes):
