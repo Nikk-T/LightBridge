@@ -1,9 +1,15 @@
-import asyncio, json, logging, serial, time, websockets
+import asyncio, json, logging, serial, time
+import websockets
+import yaml
+
 from mdp_protocol import *
+from pathlib import Path
 
 logging.basicConfig(level=logging.INFO,
  format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("bridge")
+
+CONFIG_PATH = Path("config/maps.yaml")
 
 SERIAL_PORT = "/dev/ttyUSB0" # Confirm name of port running ls /dev* command. Supposed to be /dev/ttyUSB0
 SERIAL_BAUD = 115200         # Confirm DIP switch setting on unit
@@ -44,13 +50,13 @@ class SLS960:
 # SLS960 addresses are 0-BASED
 # Serial 0 = 0-119, Serial 1 = 120-239 ... Serial 7 = 840-959
 
-UNIT_CHANNEL_MAP = {
- "A101": [0, 1, 2],
- "A102": [3, 4, 5],
- "A103": [6, 7, 8],
- "B201": [9, 10, 11],
- # Complete this map with integrator once model is wired
-}
+# UNIT_CHANNEL_MAP, STATUS_COLOUR
+# "A101": [0, 1, 2],
+# "A102": [3, 4, 5],
+# "A103": [6, 7, 8],
+# "B201": [9, 10, 11],
+# # Complete this map with integrator once model is wired
+#}
 
 FLOOR_CHANNEL_MAP = {
  1: list(range(0, 30)),
@@ -58,14 +64,38 @@ FLOOR_CHANNEL_MAP = {
  # Complete with integrator
 }
 
-STATUS_COLOUR = {
- "available": (50, 255, 100),
- "selected": (100, 150, 255),
- "reserved": (255, 200, 0),
- "sold": (255, 50, 50),
- "off": (0, 0, 0),
-}
+#STATUS_COLOUR = {
+# "available": (50, 255, 100),
+# "selected": (100, 150, 255),
+# "reserved": (255, 200, 0),
+# "sold": (255, 50, 50),
+# "off": (0, 0, 0),
+#}
 
+def load_maps(config_path=CONFIG_PATH):
+  if not config_path.exists():
+    raise FileNotFoundError(f"Config file not found: {config_path}")
+    
+  with open(config_path, "r") as f:
+    config = yaml.safe_load(f)
+    log.info(config)
+  #Unit map
+  unit_channel_map = config.get("unit_channel_map", {})
+  
+  #Floor map
+  #floor_channel_map = {}
+  # for floor, range_data in config.get("floor_channel_map", {}).items():
+  #   start = range_data["start"]
+  #   end = range_data["end"]
+  #   floor_channel_map{int(floor)] = list(range(start, end))
+     
+  #Convert colors to tuples
+  status_colour = {
+   key: tuple(value)
+   for key, value in config.get("status_colour", {}).items()
+  }
+  return unit_channel_map, status_colour #floor_channel_map, 
+  
 sls = SLS960(SERIAL_PORT, SERIAL_BAUD)
 START_TIME = time.time()
 
@@ -145,6 +175,11 @@ async def handle(websocket):
 
 async def main():
  log.info("Bridge starting — ws://0.0.0.0:8765")
+ UNIT_CHANNEL_MAP, STATUS_COLOUR = load_maps()
+ log.info(CONFIG_PATH)
+ log.info(UNIT_CHANNEL_MAP)
+ log.info(FLOOR_CHANNEL_MAP)
+ log.info(STATUS_COLOUR)
  async with websockets.serve(handle, "0.0.0.0", 8765):
   await asyncio.gather(
    asyncio.Future(), # run forever
