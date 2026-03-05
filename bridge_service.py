@@ -4,19 +4,75 @@ import yaml
 
 from mdp_protocol import *
 from pathlib import Path
+from logging.handlers import RotatingFileHandler
 
-logging.basicConfig(level=logging.INFO,
- format="%(asctime)s %(levelname)s %(message)s")
+# -----------------------------
+# Create logs directory
+# -----------------------------
+LOG_DIR = Path("logs")
+LOG_DIR.mkdir(exist_ok=True)
+
+LOG_FILE = LOG_DIR / "bridge.log"
+ERROR_FILE = LOG_DIR / "bridge_error.log"
+
+# -----------------------------
+# Create logger
+# -----------------------------
 log = logging.getLogger("bridge")
+log.setLevel(logging.INFO)
+
+# -----------------------------
+# Log format
+# -----------------------------
+formatter = logging.Formatter(
+ "%(asctime)s | %(levelname)s | %(name)s | %(message)s"
+)
+
+# -----------------------------
+# Rotating main log file
+# -----------------------------
+file_handler = RotatingFileHandler(
+ LOG_FILE,
+ maxBytes=5 * 1024 * 1024,   # 5 MB
+ backupCount=3               # keep 3 old logs
+)
+file_handler.setFormatter(formatter)
+
+# -----------------------------
+# Error log file
+# -----------------------------
+error_handler = RotatingFileHandler(
+ ERROR_FILE,
+ maxBytes=2 * 1024 * 1024,
+ backupCount=3
+)
+error_handler.setLevel(logging.ERROR)
+error_handler.setFormatter(formatter)
+
+# -----------------------------
+# Console output
+# -----------------------------
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(formatter)
+
+# -----------------------------
+# Add handlers
+# -----------------------------
+log.addHandler(file_handler)
+log.addHandler(error_handler)
+log.addHandler(console_handler)
 
 CONFIG_PATH = Path("config/maps.yaml")
 
 SERIAL_PORT = "/dev/ttyUSB0" # Confirm name of port running ls /dev* command. Supposed to be /dev/ttyUSB0
 SERIAL_BAUD = 115200         # Confirm DIP switch setting on unit
+WS_URL = "ws://0.0.0.0:8765"
 
 UNIT_CHANNEL_MAP = {}
 FLOOR_CHANNEL_MAP = {}
 STATUS_COLOUR = {}
+
+RECONNECT_DELAY = 5
 
 class SLS960:
  def __init__(self, port, baud):
