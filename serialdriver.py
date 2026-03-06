@@ -34,7 +34,7 @@ class SLS960:
         self.ser.flush()
 
     def rgb(self, ch, r, g, b):
-        self.send(cmd_rgb_fade(ch, r, 10, 10, g, 10, 10, b, 10, 10))
+        self.send(cmd_rgb_fade(ch, r, 10, 5, g, 10, 5, b, 10, 5))
     #    self.send(cmd_rgb_level(ch, r, g, b))
 
     def off(self, ch):

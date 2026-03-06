@@ -95,17 +95,18 @@ def load_maps(config_path=CONFIG_PATH):
   for floor, range_data in config.get("floor_channel_map", {}).items():
     if not isinstance(range_data, list) or len(range_data) !=2:
       raise ValueError(
-        f"Invalid floor_channel_map entry for florr {floor}. "
+        f"Invalid floor_channel_map entry for floor {floor}. "
         f"Expected [start, end], got: {range_data}"
       )
     start, end = map(int, range_data)
     floor_channel_map[int(floor)] = list(range(start, end+1))
     
   #Convert colors to tuples
-  status_colour = {
-   key: tuple(value)
-   for key, value in config.get("status_colour", {}).items()
-  }
+  status_colour = config.get("status_colour", {})
+  #status_colour = {
+  # key: tuple(value)
+  # for key, value in config.get("status_colour", {}).items()
+  #}
   return unit_channel_map, floor_channel_map, status_colour 
   
 sls = SLS960(SERIAL_PORT, SERIAL_BAUD)
@@ -131,7 +132,7 @@ async def handle(websocket):
    if command == "unit_status":
     uid = payload["unit_id"]
     status = payload.get("status", "off")
-    r, g, b = STATUS_COLOUR.get(status, (255,255,255))
+    r, g, b = STATUS_COLOUR.get(status, (0,0,0))
     for ch in UNIT_CHANNEL_MAP.get(uid, []):
      sls.rgb(ch, r, g, b)
 
@@ -139,7 +140,7 @@ async def handle(websocket):
     # SUSPEND first — all channels update simultaneously
     sls.suspend()
     for uid, status in payload.get("units", {}).items():
-     r, g, b = STATUS_COLOUR.get(status, (255,255,255))
+     r, g, b = STATUS_COLOUR.get(status, (0,0,0))
      for ch in UNIT_CHANNEL_MAP.get(uid, []):
       sls.rgb(ch, r, g, b)
     sls.resume() # All channels light at once — no flicker
