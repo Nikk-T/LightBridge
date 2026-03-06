@@ -9,8 +9,11 @@ from serialdriver import SLS960
 # -----------------------------
 # Create logs directory
 # -----------------------------
-LOG_DIR = Path("logs")
+BASE_DIR = Path(__file__).resolve().parent
+
+LOG_DIR = BASE_DIR/"logs"
 LOG_DIR.mkdir(exist_ok=True)
+#LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 LOG_FILE = LOG_DIR / "bridge.log"
 ERROR_FILE = LOG_DIR / "bridge_error.log"
@@ -62,7 +65,9 @@ log.addHandler(file_handler)
 log.addHandler(error_handler)
 log.addHandler(console_handler)
 
-CONFIG_PATH = Path("config/maps.yaml")
+
+CONFIG_PATH = BASE_DIR / "config" / "maps.yaml"
+#CONFIG_PATH = Path("config/maps.yaml")
 
 SERIAL_PORT = "/dev/ttyUSB0" # Confirm name of port running ls /dev* command. Supposed to be /dev/ttyUSB0
 SERIAL_BAUD = 115200         # Confirm DIP switch setting on unit
