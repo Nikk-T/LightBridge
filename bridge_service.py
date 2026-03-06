@@ -27,9 +27,7 @@ log.setLevel(logging.INFO)
 # -----------------------------
 # Log format
 # -----------------------------
-formatter = logging.Formatter(
- "%(asctime)s | %(levelname)s | %(name)s | %(message)s"
-)
+formatter = logging.Formatter("%(asctime)s | %(levelname)s | %(name)s | %(message)s")
 
 # -----------------------------
 # Rotating main log file
