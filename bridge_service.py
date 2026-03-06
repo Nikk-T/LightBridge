@@ -2,15 +2,18 @@ import asyncio, json, logging, serial, time
 import websockets
 import yaml
 
-from mdp_protocol import *
 from pathlib import Path
 from logging.handlers import RotatingFileHandler
+from serialdriver import SLS960
 
 # -----------------------------
 # Create logs directory
 # -----------------------------
-LOG_DIR = Path("logs")
+BASE_DIR = Path(__file__).resolve().parent
+
+LOG_DIR = BASE_DIR/"logs"
 LOG_DIR.mkdir(exist_ok=True)
+#LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 LOG_FILE = LOG_DIR / "bridge.log"
 ERROR_FILE = LOG_DIR / "bridge_error.log"
@@ -62,7 +65,9 @@ log.addHandler(file_handler)
 log.addHandler(error_handler)
 log.addHandler(console_handler)
 
-CONFIG_PATH = Path("config/maps.yaml")
+
+CONFIG_PATH = BASE_DIR / "config" / "maps.yaml"
+#CONFIG_PATH = Path("config/maps.yaml")
 
 SERIAL_PORT = "/dev/ttyUSB0" # Confirm name of port running ls /dev* command. Supposed to be /dev/ttyUSB0
 SERIAL_BAUD = 115200         # Confirm DIP switch setting on unit
@@ -73,46 +78,16 @@ FLOOR_CHANNEL_MAP = {}
 STATUS_COLOUR = {}
 
 RECONNECT_DELAY = 5
-
-class SLS960:
- def __init__(self, port, baud):
-  self.ser = serial.Serial(
-   port=port, baudrate=baud,
-   bytesize=serial.EIGHTBITS,
-   parity=serial.PARITY_NONE,
-   stopbits=serial.STOPBITS_ONE,
-   timeout=1)
-  log.info(f"SLS960 opened on {port} at {baud} baud")
-
- def send(self, data: bytes):
-  self.ser.write(data)
-  self.ser.flush()
-
- def rgb(self, ch, r, g, b):
-  self.send(cmd_rgb_level(ch, r, g, b))
-
- def off(self, ch):
-  self.send(cmd_off(ch))
-
- def blackout(self):
-  self.send(cmd_broadcast_off())
-
- def suspend(self):
-  self.send(cmd_subcmd(0, SUBCMD_SUSPEND))
-
- def resume(self):
-  self.send(cmd_subcmd(0, SUBCMD_RESUME))
-
- def keepalive(self):
-  self.send(cmd_nop(0))
-
+#---------------------------------------------------------
+# Load config from YAML
+#---------------------------------------------------------
 
 def load_maps(config_path=CONFIG_PATH):
-  if not config_path.exists():
-    raise FileNotFoundError(f"Config file not found: {config_path}")
-    
-  with open(config_path, "r") as f:
-    config = yaml.safe_load(f)
+ if not config_path.exists():
+  raise FileNotFoundError(f"Config file not found: {config_path}")
+
+ with open(config_path, "r") as f:
+  config = yaml.safe_load(f)
 
   #Unit map
   unit_channel_map = config.get("unit_channel_map", {})
@@ -125,7 +100,6 @@ def load_maps(config_path=CONFIG_PATH):
         f"Invalid floor_channel_map entry for florr {floor}. "
         f"Expected [start, end], got: {range_data}"
       )
-     
     start, end = map(int, range_data)
     floor_channel_map[int(floor)] = list(range(start, end+1))
     
@@ -139,13 +113,14 @@ def load_maps(config_path=CONFIG_PATH):
 sls = SLS960(SERIAL_PORT, SERIAL_BAUD)
 START_TIME = time.time()
 
+#Send MDP_NOP every 10 min to prevent 30-min SLS960 idle timeout.
 async def keepalive_loop():
- #Send MDP_NOP every 10 min to prevent 30-min SLS960 idle timeout.
  while True:
   await asyncio.sleep(600)
   sls.keepalive()
   log.debug("Keepalive NOP sent")
 
+#WebSocket handling
 async def handle(websocket):
  log.info(f"Client connected: {websocket.remote_address}")
  async for msg in websocket:
