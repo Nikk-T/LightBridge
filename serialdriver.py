@@ -3,31 +3,75 @@ import asyncio, logging, serial, time
 from mdp_protocol import *
 log = logging.getLogger(__name__)
 
-#TRY Later
-""" # --------------------------------------------------
-# Serial connection manager
-# --------------------------------------------------
-async def connect_serial():
+#class SLS960:
+
+RECONNECT_DELAY = 3
+MAX_RETRIES = 3
+
+def __init__(self, port, baud):
+    self.port = port
+    self.baud = baud
+    self.ser = None
+    self.connect()
+
+# -------------------------------------------------
+# Serial connection
+# -------------------------------------------------
+def connect(self):
+
     while True:
         try:
-            ser = serial.Serial(SERIAL_PORT, SERIAL_BAUD, timeout=0.1)
-            log.info(f"Serial connected {SERIAL_PORT}")
-            return ser
-        except Exception as e:
+            self.ser = serial.Serial(
+                port=self.port,
+                baudrate=self.baud,
+                bytesize=serial.EIGHTBITS,
+                parity=serial.PARITY_NONE,
+                stopbits=serial.STOPBITS_ONE,
+                timeout=1
+            )
+
+            log.info(f"SLS960 connected on {self.port} @ {self.baud}")
+            return
+
+        except serial.SerialException as e:
             log.error(f"Serial connect failed: {e}")
-            await asyncio.sleep(RECONNECT_DELAY)
-"""
+            log.info("Retrying serial connection...")
+            time.sleep(self.RECONNECT_DELAY)
 
+# -------------------------------------------------
+# Send with auto-reconnect
+# -------------------------------------------------
+def send(self, data: bytes):
 
-class SLS960:
-    def __init__(self, port, baud):
-        self.ser = serial.Serial(
-            port=port, baudrate=baud,
-            bytesize=serial.EIGHTBITS,
-            parity=serial.PARITY_NONE,
-            stopbits=serial.STOPBITS_ONE,
-            timeout=1)
-        log.info(f"SLS960 opened on {port} at {baud} baud")
+    for attempt in range(self.MAX_RETRIES):
+
+        try:
+
+            if not self.ser or not self.ser.is_open:
+                raise serial.SerialException("Serial not connected")
+
+            self.ser.write(data)
+            self.ser.flush()
+            return
+
+        except (serial.SerialException, OSError) as e:
+
+            log.error(f"Serial write failed: {e}")
+
+            try:
+                if self.ser:
+                    self.ser.close()
+            except:
+                pass
+
+            log.warning("Serial disconnected — reconnecting...")
+            self.connect()
+
+    log.error("Serial send failed after retries")
+
+# -------------------------------------------------
+# Hardware commands
+# -------------------------------------------------
 
     def send(self, data: bytes):
         self.ser.write(data)
