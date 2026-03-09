@@ -1,85 +1,128 @@
 import asyncio, logging, serial, time
+from serial.tools import list_ports
 
 from mdp_protocol import *
 log = logging.getLogger(__name__)
 
-#class SLS960:
+class SLS960:
 
-RECONNECT_DELAY = 3
-MAX_RETRIES = 3
+    RECONNECT_DELAY = 3
+    MAX_RETRIES = 3
 
-def __init__(self, port, baud):
-    self.port = port
-    self.baud = baud
-    self.ser = None
-    self.connect()
+    def __init__(self, baud, port=None, vid=None, pid=None, name_hint=None):
+        """
+        port: fixed port (optional)
+        vid/pid: USB vendor/product ID (best detection)
+        name_hint: substring to match in device description
+        """
 
-# -------------------------------------------------
-# Serial connection
-# -------------------------------------------------
-def connect(self):
+        self.baud = baud
+        self.port = port
+        self.vid = vid
+        self.pid = pid
+        self.name_hint = name_hint
+        self.ser = None
 
-    while True:
-        try:
-            self.ser = serial.Serial(
-                port=self.port,
-                baudrate=self.baud,
-                bytesize=serial.EIGHTBITS,
-                parity=serial.PARITY_NONE,
-                stopbits=serial.STOPBITS_ONE,
-                timeout=1
-            )
+        self.connect()
 
-            log.info(f"SLS960 connected on {self.port} @ {self.baud}")
-            return
+    # -------------------------------------------------
+    # Detect device
+    # -------------------------------------------------
+    def detect_port(self):
 
-        except serial.SerialException as e:
-            log.error(f"Serial connect failed: {e}")
-            log.info("Retrying serial connection...")
-            time.sleep(self.RECONNECT_DELAY)
+        ports = list_ports.comports()
 
-# -------------------------------------------------
-# Send with auto-reconnect
-# -------------------------------------------------
-def send(self, data: bytes):
+        for p in ports:
 
-    for attempt in range(self.MAX_RETRIES):
+            # VID/PID match (best)
+            if self.vid and self.pid:
+                if p.vid == self.vid and p.pid == self.pid:
+                    return p.device
 
-        try:
+            # description match
+            if self.name_hint and self.name_hint.lower() in (p.description or "").lower():
+                return p.device
 
-            if not self.ser or not self.ser.is_open:
-                raise serial.SerialException("Serial not connected")
+            # fallback common serial adapters
+            if p.device.startswith("/dev/ttyUSB") or p.device.startswith("/dev/ttyACM"):
+                return p.device
 
-            self.ser.write(data)
-            self.ser.flush()
-            return
+        return None
 
-        except (serial.SerialException, OSError) as e:
+    # -------------------------------------------------
+    # Connect serial
+    # -------------------------------------------------
+    def connect(self):
 
-            log.error(f"Serial write failed: {e}")
+        while True:
 
             try:
-                if self.ser:
-                    self.ser.close()
-            except:
-                pass
 
-            log.warning("Serial disconnected — reconnecting...")
-            self.connect()
+                if not self.port:
+                    self.port = self.detect_port()
 
-    log.error("Serial send failed after retries")
+                    if not self.port:
+                        log.warning("SLS960 device not found — retrying...")
+                        time.sleep(self.RECONNECT_DELAY)
+                        continue
 
-# -------------------------------------------------
-# Hardware commands
-# -------------------------------------------------
+                log.info(f"Connecting to SLS960 on {self.port}")
 
+                self.ser = serial.Serial(
+                    port=self.port,
+                    baudrate=self.baud,
+                    bytesize=serial.EIGHTBITS,
+                    parity=serial.PARITY_NONE,
+                    stopbits=serial.STOPBITS_ONE,
+                    timeout=1
+                )
+
+                log.info(f"SLS960 connected on {self.port} @ {self.baud}")
+                return
+
+            except serial.SerialException as e:
+
+                log.error(f"Serial connect failed: {e}")
+                self.port = None
+                time.sleep(self.RECONNECT_DELAY)
+
+    # -------------------------------------------------
+    # Send with reconnect
+    # -------------------------------------------------
     def send(self, data: bytes):
-        self.ser.write(data)
-        self.ser.flush()
 
+        for attempt in range(self.MAX_RETRIES):
+
+            try:
+
+                if not self.ser or not self.ser.is_open:
+                    raise serial.SerialException("Serial not connected")
+
+                self.ser.write(data)
+                self.ser.flush()
+                return
+
+            except (serial.SerialException, OSError) as e:
+
+                log.error(f"Serial write failed: {e}")
+
+                try:
+                    if self.ser:
+                        self.ser.close()
+                except:
+                    pass
+
+                self.port = None
+                log.warning("Serial disconnected — reconnecting...")
+                self.connect()
+
+        log.error("Serial send failed after retries")
+
+    # -------------------------------------------------
+    # Commands
+    # -------------------------------------------------
     def rgb(self, ch, r, g, b):
-        self.send(cmd_rgb_fade(ch, r, 10, 5, g, 10, 5, b, 10, 5))
-    #    self.send(cmd_rgb_level(ch, r, g, b))
+        self.send(cmd_rgb_level(ch, r, g, b))
 
     def off(self, ch):
         self.send(cmd_off(ch))
@@ -96,4 +139,7 @@ def send(self, data: bytes):
     def keepalive(self):
         self.send(cmd_nop(0))
 
+    #def rgb(self, ch, r, g, b):
+    #    self.send(cmd_rgb_fade(ch, r, 10, 5, g, 10, 5, b, 10, 5))
+    #    self.send(cmd_rgb_level(ch, r, g, b))
 
