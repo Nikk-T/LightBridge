@@ -130,7 +130,7 @@ async def handle(websocket):
     status = payload.get("status", "off")
     r, g, b = STATUS_COLOUR.get(status, (0,0,0))
     for ch in UNIT_CHANNEL_MAP.get(uid, []):
-     sls.rgb(ch, r, g, b)
+     sls.rgb_fadein(ch, r, g, b)
 
    elif command == "sync_all":
     # SUSPEND first — all channels update simultaneously
@@ -138,14 +138,14 @@ async def handle(websocket):
     for uid, status in payload.get("units", {}).items():
      r, g, b = STATUS_COLOUR.get(status, (0,0,0))
      for ch in UNIT_CHANNEL_MAP.get(uid, []):
-      sls.rgb(ch, r, g, b)
+      sls.rgb_fadein(ch, r, g, b)
     sls.resume() # All channels light at once — no flicker
 
    elif command == "floor_highlight":
     col = payload.get("colour", [100, 150, 255])
     sls.suspend()
     for ch in FLOOR_CHANNEL_MAP.get(payload.get("floor",0), []):
-     sls.rgb(ch, *col)
+     sls.rgb_fadein(ch, *col)
     sls.resume()
 
    elif command == "set_scene":
@@ -156,7 +156,7 @@ async def handle(websocket):
      # Warm white across all channels
      sls.suspend()
      for ch in range(960):
-      sls.rgb(ch, 255, 220, 160)
+      sls.rgb_fadein(ch, 255, 220, 160)
      sls.resume()
     elif scene == "presentation":
      # Integrator to define: trigger pseudo-address group

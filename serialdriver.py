@@ -124,6 +124,9 @@ class SLS960:
     def rgb(self, ch, r, g, b):
         self.send(cmd_rgb_level(ch, r, g, b))
 
+    def rgb_fadein(self, ch, r, g, b, interval=10, step=5):
+        self.send(cmd_rgb_fade(ch, r, interval, step, g, interval, step, b, interval, step,))
+
     def off(self, ch):
         self.send(cmd_off(ch))
 
@@ -138,7 +141,3 @@ class SLS960:
 
     def keepalive(self):
         self.send(cmd_nop(0))
-    #def rgb(self, ch, r, g, b):
-    #    self.send(cmd_rgb_fade(ch, r, 10, 5, g, 10, 5, b, 10, 5))
-    #    self.send(cmd_rgb_level(ch, r, g, b))
-
