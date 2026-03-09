@@ -103,13 +103,9 @@ def load_maps(config_path=CONFIG_PATH):
     
   #Convert colors to tuples
   status_colour = config.get("status_colour", {})
-  #status_colour = {
-  # key: tuple(value)
-  # for key, value in config.get("status_colour", {}).items()
-  #}
   return unit_channel_map, floor_channel_map, status_colour 
   
-sls = SLS960(SERIAL_PORT, SERIAL_BAUD)
+sls = SLS960(SERIAL_BAUD)
 START_TIME = time.time()
 
 #Send MDP_NOP every 10 min to prevent 30-min SLS960 idle timeout.
