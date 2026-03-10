@@ -6,6 +6,8 @@ from pathlib import Path
 from logging.handlers import RotatingFileHandler
 from serialdriver import SLS960
 
+idle_show_task = None
+
 # -----------------------------
 # Create logs directory
 # -----------------------------
