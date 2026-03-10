@@ -108,6 +108,61 @@ def load_maps(config_path=CONFIG_PATH):
 sls = SLS960(SERIAL_BAUD)
 START_TIME = time.time()
 
+#Realistic light show
+async def realistic_idle_show():
+
+ log.info("Realistic idle show started")
+ units = list(UNIT_CHANNEL_MAP.keys())
+ # state tracking
+ active_units = {}
+ try:
+  while True:
+
+   # desired active apartment count
+   target_active = random.randint(
+    int(len(units)*0.1),
+    int(len(units)*0.4)
+   )
+
+   # turn on more apartments if needed
+   while len(active_units) < target_active:
+    uid = random.choice(units)
+
+    if uid in active_units:
+     continue
+    channels = UNIT_CHANNEL_MAP.get(uid, [])
+
+    # warm white variation
+    base = random.randint(200,255)
+    r = base
+    g = base - random.randint(5,40)
+    b = base - random.randint(20,70)
+
+    for ch in channels:
+     sls.rgb_fadein(ch,r,g,b)
+    duration = random.randint(2,20)
+    active_units[uid] = asyncio.get_event_loop().time() + duration
+    log.debug(f"Apartment {uid} ON for {duration}s")
+
+   # check apartments to turn off
+   now = asyncio.get_event_loop().time()
+   for uid in list(active_units.keys()):
+    if now >= active_units[uid]:
+     for ch in UNIT_CHANNEL_MAP.get(uid,[]):
+      sls.rgb_fadein(ch,0,0,0)
+     log.debug(f"Apartment {uid} OFF")
+     del active_units[uid]
+   await asyncio.sleep(random.uniform(1,3))
+ except asyncio.CancelledError:
+
+  log.info("Realistic idle show stopped")
+
+  # turn off all active units
+  for uid in active_units:
+   for ch in UNIT_CHANNEL_MAP.get(uid,[]):
+    sls.rgb_fadein(ch,0,0,0)
+  raise
+
 #Send MDP_NOP every 10 min to prevent 30-min SLS960 idle timeout.
 async def keepalive_loop():
  while True:
@@ -117,6 +172,7 @@ async def keepalive_loop():
 
 #WebSocket handling
 async def handle(websocket):
+ global idle_show_task
  log.info(f"Client connected: {websocket.remote_address}")
  async for msg in websocket:
   try:
@@ -125,14 +181,20 @@ async def handle(websocket):
    payload = data.get("payload", {})
    log.info(f"CMD: {command} | {payload}")
 
-   if command == "unit_status":
+   #Stop idle show on any command except PING
+   if idle_show_task and command != "ping" and not idle_show_task.done():
+    log.info("Stopping realistic idle show deu to new command")
+    idle_show_task.cancel()
+    idle_show_task = None
+
+   if command == "unit_status" or command == "unit_topology":
     uid = payload["unit_id"]
     status = payload.get("status", "off")
     r, g, b = STATUS_COLOUR.get(status, (0,0,0))
     for ch in UNIT_CHANNEL_MAP.get(uid, []):
      sls.rgb_fadein(ch, r, g, b)
 
-   elif command == "sync_all":
+   elif command == "sync_all" or command == "highlight_group":
     # SUSPEND first — all channels update simultaneously
     sls.suspend()
     for uid, status in payload.get("units", {}).items():
@@ -152,15 +214,19 @@ async def handle(websocket):
     scene = payload.get("scene", "idle")
     if scene == "blackout":
      sls.blackout()
+
     elif scene == "idle":
      # Warm white across all channels
      sls.suspend()
      for ch in range(960):
       sls.rgb_fadein(ch, 255, 220, 160)
      sls.resume()
+
     elif scene == "presentation":
-     # Integrator to define: trigger pseudo-address group
-     # or run a pre-programmed sequence here
+     if not idle_show_task or idle_show_task.done():
+      idle_show_task = asyncio.create_task(realistic_idle_show())
+
+    elif scene == "log_on":
      pass
 
    elif command == "blackout":
