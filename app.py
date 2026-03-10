@@ -10,7 +10,7 @@ from pathlib import Path
 app = Flask(__name__)
 
 WS_URL = "ws://localhost:8765"
-CONFIG_PATH = Path(__file__).resolve().parent / "maps.yaml"
+CONFIG_PATH = Path(__file__).resolve().parent / "config/maps.yaml"
 
 # ── Load config ─────────────────────────────────────────────
 def load_config():
