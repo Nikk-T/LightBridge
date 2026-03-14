@@ -68,7 +68,7 @@ log.addHandler(console_handler)
 
 
 CONFIG_PATH = BASE_DIR / "config" / "maps.yaml"
-SETTINGS_PATH = BASE_DIR / "config" / "settings.yaml"
+#CONFIG_PATH = Path("config/maps.yaml")
 
 SERIAL_PORT = "/dev/ttyUSB0" # Confirm name of port running ls /dev* command. Supposed to be /dev/ttyUSB0
 SERIAL_BAUD = 115200         # Confirm DIP switch setting on unit
@@ -82,7 +82,7 @@ RECONNECT_DELAY = 5
 #---------------------------------------------------------
 # Load config from YAML
 #---------------------------------------------------------
-# Load Maps
+
 def load_maps(config_path=CONFIG_PATH):
  if not config_path.exists():
   raise FileNotFoundError(f"Config file not found: {config_path}")
@@ -103,20 +103,11 @@ def load_maps(config_path=CONFIG_PATH):
       )
     start, end = map(int, range_data)
     floor_channel_map[int(floor)] = list(range(start, end+1))
-
- return unit_channel_map, floor_channel_map
-#========= LOAD other settings =================
-def load_settings(settings_path=SETTINGS_PATH):
- if not settings_path.exists():
-  raise FileNotFoundError(f"Config file not found: {settings_path}")
-
- with open(settings_path, "r") as f:
-  config = yaml.safe_load(f)
-
-  #Get colors
+    
+  #Convert colors to tuples
   status_colour = config.get("status_colour", {})
-  return status_colour
-
+  return unit_channel_map, floor_channel_map, status_colour 
+  
 sls = SLS960(SERIAL_BAUD)
 START_TIME = time.time()
 

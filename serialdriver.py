@@ -124,7 +124,7 @@ class SLS960:
     def rgb(self, ch, r, g, b):
         self.send(cmd_rgb_level(ch, r, g, b))
 
-    def rgb_fadein(self, ch, r, g, b, interval=10, step=60):
+    def rgb_fadein(self, ch, r, g, b, interval=10, step=50):
         stepRed = r/ step
         stepGreen = g/ step
         stepBlue = b/ step
