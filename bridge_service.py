@@ -266,8 +266,9 @@ async def main():
  
  log.info("Bridge starting — ws://0.0.0.0:8765")
  
- UNIT_CHANNEL_MAP, FLOOR_CHANNEL_MAP, STATUS_COLOUR = load_maps()
- 
+ UNIT_CHANNEL_MAP, FLOOR_CHANNEL_MAP = load_maps()
+ STATUS_COLOUR = load_settings()
+
  log.info(f"Configuration loaded from file: {CONFIG_PATH}")
  log.info(f"{len(UNIT_CHANNEL_MAP)} units successfully loaded")
  log.info(f"{len(FLOOR_CHANNEL_MAP)} floors successfully loaded")
