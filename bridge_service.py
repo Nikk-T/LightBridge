@@ -147,8 +147,8 @@ async def realistic_idle_show():
     # warm white variation
     base = random.randint(200,255)
     r = base
-    g = base - random.randint(5,40)
-    b = base - random.randint(20,70)
+    g = base # - random.randint(5,40)
+    b = base # - random.randint(20,70)
 
     for ch in channels:
      sls.rgb_fadein(ch,r,g,b)
