@@ -1,10 +1,10 @@
 """
-LightBridge Web Interface — bridge_service_GUI.py — Dashboard app (port 5000)
-Serves the unit control dashboard and proxies commands to bridge_service via WebSocket.
+LightBridge Web Interface — bridge_service_GUI.py (port 5000)
+Serves the dashboard and settings pages, proxies commands to bridge_service via WebSocket.
 
-Config files (both in same directory as this script):
-  maps.yaml     — unit_channel_map, floor_channel_map
-  settings.yaml — status_colour
+Config files:
+  config/maps.yaml     — unit_channel_map, floor_channel_map
+  config/settings.yaml — status_colour
 """
 
 from flask import Flask, render_template, jsonify, request
@@ -40,7 +40,7 @@ async def ws_send(payload: dict) -> dict:
 def send_command(payload: dict) -> dict:
     return asyncio.run(ws_send(payload))
 
-# ── Routes ───────────────────────────────────────────────────
+# ── Dashboard ────────────────────────────────────────────────
 @app.route("/")
 def index():
     maps     = load_maps()
@@ -50,6 +50,32 @@ def index():
     statuses = list(settings.get("status_colour", {}).keys())
     return render_template("index.html", units=units, floors=floors, statuses=statuses)
 
+# ── Settings ─────────────────────────────────────────────────
+@app.route("/settings")
+def settings_page():
+    maps     = load_maps()
+    settings = load_settings()
+    colours  = settings.get("status_colour", {})
+    floors   = sorted(maps.get("floor_channel_map", {}).keys())
+    return render_template("settings.html", colours=colours, floors=floors)
+
+@app.route("/api/save_preset", methods=["POST"])
+def save_preset():
+    try:
+        data = request.json
+        name = data.get("name", "").strip()
+        rgb  = data.get("rgb", [0, 0, 0])
+        if not name:
+            return jsonify({"status": "error", "message": "Preset name required"})
+        settings = load_settings()
+        settings.setdefault("status_colour", {})[name] = [int(rgb[0]), int(rgb[1]), int(rgb[2])]
+        with open(SETTINGS_PATH, "w") as f:
+            yaml.dump(settings, f, default_flow_style=False, sort_keys=False, allow_unicode=True)
+        return jsonify({"status": "ok", "message": f"Preset '{name}' saved"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)})
+
+# ── Bridge API ───────────────────────────────────────────────
 @app.route("/api/ping")
 def ping():
     return jsonify(send_command({"command": "ping", "payload": {}}))
@@ -100,28 +126,3 @@ def set_colour():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
-
-# ── Settings page ────────────────────────────────────────────
-@app.route("/settings")
-def settings_page():
-    maps     = load_maps()
-    settings = load_settings()
-    colours  = settings.get("status_colour", {})
-    floors   = sorted(maps.get("floor_channel_map", {}).keys())
-    return render_template("settings.html", colours=colours, floors=floors)
-
-@app.route("/api/save_preset", methods=["POST"])
-def save_preset():
-    try:
-        data   = request.json
-        name   = data.get("name", "").strip()
-        rgb    = data.get("rgb", [0, 0, 0])
-        if not name:
-            return jsonify({"status": "error", "message": "Preset name required"})
-        settings = load_settings()
-        settings.setdefault("status_colour", {})[name] = [int(rgb[0]), int(rgb[1]), int(rgb[2])]
-        with open(SETTINGS_PATH, "w") as f:
-            yaml.dump(settings, f, default_flow_style=False, sort_keys=False, allow_unicode=True)
-        return jsonify({"status": "ok", "message": f"Preset '{name}' saved"})
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)})
