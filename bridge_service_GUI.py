@@ -100,3 +100,28 @@ def set_colour():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
+
+# ── Settings page ────────────────────────────────────────────
+@app.route("/settings")
+def settings_page():
+    maps     = load_maps()
+    settings = load_settings()
+    colours  = settings.get("status_colour", {})
+    floors   = sorted(maps.get("floor_channel_map", {}).keys())
+    return render_template("settings.html", colours=colours, floors=floors)
+
+@app.route("/api/save_preset", methods=["POST"])
+def save_preset():
+    try:
+        data   = request.json
+        name   = data.get("name", "").strip()
+        rgb    = data.get("rgb", [0, 0, 0])
+        if not name:
+            return jsonify({"status": "error", "message": "Preset name required"})
+        settings = load_settings()
+        settings.setdefault("status_colour", {})[name] = [int(rgb[0]), int(rgb[1]), int(rgb[2])]
+        with open(SETTINGS_PATH, "w") as f:
+            yaml.dump(settings, f, default_flow_style=False, sort_keys=False, allow_unicode=True)
+        return jsonify({"status": "ok", "message": f"Preset '{name}' saved"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)})
