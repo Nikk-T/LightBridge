@@ -35,13 +35,9 @@ def load_settings() -> dict:
 # ── Routes ───────────────────────────────────────────────────
 @app.route("/")
 def index():
-    maps     = load_maps()
-    settings = load_settings()
-    maps_yaml     = yaml.dump(maps,     default_flow_style=False, sort_keys=False) if maps     else ""
-    settings_yaml = yaml.dump(settings, default_flow_style=False, sort_keys=False) if settings else ""
-    return render_template("import.html",
-                           current_maps_yaml=maps_yaml,
-                           current_settings_yaml=settings_yaml)
+    maps      = load_maps()
+    maps_yaml = yaml.dump(maps, default_flow_style=False, sort_keys=False) if maps else ""
+    return render_template("import.html", current_maps_yaml=maps_yaml)
 
 @app.route("/api/current_maps")
 def current_maps():

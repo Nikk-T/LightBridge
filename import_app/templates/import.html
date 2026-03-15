@@ -339,47 +339,29 @@
     <!-- Sheet tabs -->
     <div id="sheet-tabs"></div>
 
-    <!-- Column mapper -->
+    <!-- Format info + floor ranges -->
     <div id="mapper-section">
 
-      <div class="mapper-title">Column Mapping</div>
+      <div class="mapper-title">File Format</div>
       <p class="hint">
-        Map your spreadsheet columns to LightBridge fields.<br>
-        <strong>Unit ID</strong> — unique room/unit name (e.g. A101)<br>
-        <strong>Channels</strong> — comma-separated LED channel numbers<br>
-        <strong>Floor</strong> — floor number (optional)<br>
-        <strong>Status</strong> — initial status (optional)
+        <strong>Col A</strong> — Unit ID (e.g. A101, Penthouse-1)<br>
+        <strong>Col B</strong> — <em>Optional:</em> Floor number (header must be <strong>Floor</strong>)<br>
+        <strong>Remaining cols</strong> — LED channel numbers, one per cell<br>
+        Row 1 is treated as a header and skipped automatically.
       </p>
 
-      <div class="mapper-grid">
-        <div class="mapper-label">Unit ID</div>
-        <div class="mapper-arrow">→</div>
-        <select class="col-select" id="map-unit"></select>
-
-        <div class="mapper-label">Channels</div>
-        <div class="mapper-arrow">→</div>
-        <select class="col-select" id="map-channels"></select>
-
-        <div class="mapper-label">Floor</div>
-        <div class="mapper-arrow">→</div>
-        <select class="col-select" id="map-floor"></select>
-
-        <div class="mapper-label">Status</div>
-        <div class="mapper-arrow">→</div>
-        <select class="col-select" id="map-status"></select>
-      </div>
-
-      <div class="mapper-title" style="margin-top:8px">Floor Channel Ranges</div>
-      <p class="hint">
-        If the sheet doesn't have floor ranges, define them manually.<br>
-        Format: <strong>floor: start-end</strong>, one per line.<br>
-        Example: <strong>1: 0-8</strong>
+      <div class="mapper-title" style="margin-top:4px">Floor Channel Ranges</div>
+      <div id="floor-status-banner" style="display:none; padding:8px 12px; border-radius:4px;
+           font-family:'Share Tech Mono',monospace; font-size:11px; margin-bottom:4px;"></div>
+      <p class="hint" id="floor-hint">
+        No file loaded yet — floor ranges will be auto-detected if a <strong>Floor</strong>
+        column is present, otherwise enter them manually below.
       </p>
-      <textarea class="cfg-input" id="floor-ranges" rows="5"
-        placeholder="1: 0-8&#10;2: 120-132&#10;3: 240-248"
+      <textarea class="cfg-input" id="floor-ranges" rows="6"
+        placeholder="1: 0-20&#10;2: 21-45&#10;3: 46-70"
         style="resize:vertical; line-height:1.7; font-size:12px; padding:10px;"></textarea>
 
-      <button class="btn primary" onclick="generateYaml()" style="margin-top:4px">
+      <button class="btn primary" onclick="generateYaml()" style="margin-top:8px">
         ⚡ Generate YAML Preview
       </button>
     </div>
@@ -413,7 +395,7 @@
     </div>
   </div>
 
-  <!-- ══ RIGHT BOTTOM — split: maps + settings ══════ -->
+  <!-- ══ RIGHT BOTTOM — current maps.yaml ═══════════ -->
   <div class="right-bottom">
     <div class="pane-header">
       <span class="pane-title">maps.yaml &nbsp;<span style="color:var(--muted);font-size:10px">units &amp; floors</span></span>
@@ -421,14 +403,8 @@
         <button class="btn" onclick="loadCurrentYaml()">↻ Reload</button>
       </div>
     </div>
-    <div id="current-yaml-wrap" style="flex:1;overflow-y:auto;border-bottom:1px solid var(--border)">
+    <div id="current-yaml-wrap">
       <pre id="current-yaml-text">{{ current_maps_yaml }}</pre>
-    </div>
-    <div class="pane-header" style="border-top:none">
-      <span class="pane-title">settings.yaml &nbsp;<span style="color:var(--muted);font-size:10px">colour schemas</span></span>
-    </div>
-    <div style="flex:1;overflow-y:auto;background:rgba(13,21,32,0.5)">
-      <pre id="settings-yaml-text" style="font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--muted);padding:16px 24px;white-space:pre;line-height:1.8">{{ current_settings_yaml }}</pre>
     </div>
   </div>
 
@@ -437,9 +413,9 @@
 <div id="toast"></div>
 
 <script>
-let workbook = null;
+let workbook     = null;
 let currentSheet = null;
-let parsedRows = [];
+let parsedRows   = [];
 let generatedConfig = null;
 
 // ── File drop & input ───────────────────────────────────────
@@ -456,17 +432,10 @@ dropZone.addEventListener('drop', e => {
 fileInput.addEventListener('change', e => { if (e.target.files[0]) loadFile(e.target.files[0]); });
 
 function loadFile(file) {
-  const validTypes = [
-    'application/vnd.ms-excel',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    'text/csv', ''
-  ];
   const ext = file.name.split('.').pop().toLowerCase();
   if (!['xls','xlsx','csv'].includes(ext)) {
-    showToast('Please drop an XLS, XLSX, or CSV file', true);
-    return;
+    showToast('Please drop an XLS, XLSX, or CSV file', true); return;
   }
-
   dropZone.classList.add('has-file');
   const nameEl = document.getElementById('file-name');
   nameEl.textContent = '📄 ' + file.name;
@@ -502,11 +471,102 @@ function selectSheet(name) {
   if (tab) tab.classList.add('active');
 
   const ws = workbook.Sheets[name];
-  parsedRows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+  parsedRows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
 
   renderPreview();
-  populateColumnSelectors();
+  detectFloorColumn();
   document.getElementById('mapper-section').style.display = 'flex';
+}
+
+// ── Detect Floor column and update UI hint ──────────────────
+function detectFloorColumn() {
+  const banner = document.getElementById('floor-status-banner');
+  const hint   = document.getElementById('floor-hint');
+  const textarea = document.getElementById('floor-ranges');
+
+  if (!parsedRows.length) return;
+  const headerRow = (parsedRows[0] || []).map(v => String(v || '').trim().toLowerCase());
+  const floorColIdx = headerRow.indexOf('floor');
+
+  if (floorColIdx === -1) {
+    banner.style.display = 'block';
+    banner.style.background = 'rgba(255,200,0,0.08)';
+    banner.style.border = '1px solid var(--amber)';
+    banner.style.color = 'var(--amber)';
+    banner.textContent = '⚠ No "Floor" column found — enter ranges manually below.';
+    hint.style.display = 'none';
+    textarea.style.borderColor = 'var(--amber)';
+    textarea.placeholder = '1: 0-20
+2: 21-45
+3: 46-70';
+  } else {
+    // Pre-compute ranges and fill textarea
+    const result = computeFloorRanges(floorColIdx);
+    if (result.ambiguous.length) {
+      banner.style.display = 'block';
+      banner.style.background = 'rgba(255,50,50,0.08)';
+      banner.style.border = '1px solid var(--red)';
+      banner.style.color = 'var(--red)';
+      banner.textContent = '⚠ Ambiguous ranges on floor(s): ' + result.ambiguous.join(', ') + ' — review below.';
+      textarea.style.borderColor = 'var(--red)';
+    } else {
+      banner.style.display = 'block';
+      banner.style.background = 'rgba(50,255,100,0.06)';
+      banner.style.border = '1px solid var(--green)';
+      banner.style.color = 'var(--green)';
+      banner.textContent = '✓ Floor column detected — ranges auto-calculated (' + Object.keys(result.ranges).length + ' floors).';
+      textarea.style.borderColor = 'var(--green)';
+    }
+    hint.style.display = 'none';
+    // Fill textarea with computed ranges (user can still edit)
+    textarea.value = Object.entries(result.ranges)
+      .sort(([a],[b]) => Number(a)-Number(b))
+      .map(([fl, [start, end]]) => `${fl}: ${start}-${end}`)
+      .join('
+');
+  }
+}
+
+// ── Compute floor → [min_ch, max_ch] from parsed data ───────
+// floorColIdx: index of the Floor column in the header row
+// Channels are ALL numeric values in the row EXCEPT col A (unit ID) and the floor col
+function computeFloorRanges(floorColIdx) {
+  const dataRows = parsedRows.slice(1).filter(row =>
+    row[0] !== null && row[0] !== undefined && String(row[0]).trim() !== ''
+  );
+
+  const floorChannels = {}; // floor → Set of channel numbers
+
+  dataRows.forEach(row => {
+    const floorRaw = row[floorColIdx];
+    if (floorRaw === null || floorRaw === undefined || String(floorRaw).trim() === '') return;
+    const floor = parseInt(floorRaw);
+    if (isNaN(floor)) return;
+
+    if (!floorChannels[floor]) floorChannels[floor] = new Set();
+
+    // Collect channels from all cols except A (idx 0) and the floor col
+    row.forEach((v, i) => {
+      if (i === 0 || i === floorColIdx) return;
+      if (v !== null && v !== undefined && v !== '' && !isNaN(Number(v))) {
+        floorChannels[floor].add(Number(v));
+      }
+    });
+  });
+
+  const ranges    = {};
+  const ambiguous = [];
+
+  Object.entries(floorChannels).forEach(([floor, chSet]) => {
+    const sorted = [...chSet].sort((a, b) => a - b);
+    const min = sorted[0], max = sorted[sorted.length - 1];
+    // Ambiguous if channels are not a contiguous block
+    const expected = max - min + 1;
+    if (sorted.length !== expected) ambiguous.push(floor);
+    ranges[floor] = [min, max];
+  });
+
+  return { ranges, ambiguous };
 }
 
 // ── Preview table ───────────────────────────────────────────
@@ -515,111 +575,72 @@ function renderPreview() {
   const wrap = document.getElementById('preview-wrap');
   wrap.style.display = 'block';
 
-  const headers = parsedRows[0];
+  // Header row (row 0) for column labels
+  const headerRow = parsedRows[0] || [];
+  const maxCols   = Math.max(...parsedRows.map(r => r.length));
+
+  // Build column headers: use cell value if present, else Col B, Col C…
+  const colHeaders = Array.from({ length: maxCols }, (_, i) => {
+    const v = headerRow[i];
+    return (v !== null && v !== undefined && v !== '') ? String(v) : `Col ${String.fromCharCode(65 + i)}`;
+  });
+
   const thead = document.querySelector('#preview-table thead');
   const tbody = document.querySelector('#preview-table tbody');
-  thead.innerHTML = '<tr>' + headers.map(h => `<th>${h || '—'}</th>`).join('') + '</tr>';
-  tbody.innerHTML = parsedRows.slice(1, 8).map(row =>
-    '<tr>' + headers.map((_, i) => `<td>${row[i] !== undefined ? row[i] : ''}</td>`).join('') + '</tr>'
-  ).join('');
-  document.getElementById('stat-rows').textContent = (parsedRows.length - 1) + ' rows parsed';
+
+  thead.innerHTML = '<tr>' + colHeaders.map(h => `<th>${h}</th>`).join('') + '</tr>';
+
+  // Show data rows (skip header row 0), up to 8 rows
+  const dataRows = parsedRows.slice(1, 9);
+  tbody.innerHTML = dataRows.map(row => {
+    const cells = Array.from({ length: maxCols }, (_, i) => {
+      const v = row[i];
+      return `<td>${(v !== null && v !== undefined) ? v : ''}</td>`;
+    });
+    return '<tr>' + cells.join('') + '</tr>';
+  }).join('');
+
+  const totalData = parsedRows.length - 1; // exclude header row
+  document.getElementById('stat-rows').textContent = totalData + ' rows parsed';
 }
 
-// ── Column selectors ────────────────────────────────────────
-function populateColumnSelectors() {
-  const headers = parsedRows[0] || [];
-  const none = '<option value="">— skip —</option>';
-  const opts = headers.map((h, i) => `<option value="${i}">${h || 'Col ' + (i+1)}</option>`).join('');
-
-  ['map-unit','map-channels','map-floor','map-status'].forEach(id => {
-    document.getElementById(id).innerHTML = none + opts;
-  });
-
-  // Auto-detect common column names
-  const autoMap = {
-    'map-unit':     ['unit', 'room', 'id', 'name', 'apt', 'apartment', 'unit_id', 'unitid'],
-    'map-channels': ['channel', 'channels', 'led', 'leds', 'ch', 'light', 'lights'],
-    'map-floor':    ['floor', 'level', 'storey', 'story', 'fl'],
-    'map-status':   ['status', 'state', 'availability', 'available'],
-  };
-  Object.entries(autoMap).forEach(([selId, keywords]) => {
-    const sel = document.getElementById(selId);
-    for (let i = 0; i < headers.length; i++) {
-      const h = String(headers[i]).toLowerCase().trim();
-      if (keywords.some(k => h.includes(k))) {
-        sel.value = i;
-        break;
-      }
-    }
-  });
-}
-
-// ── Generate YAML ───────────────────────────────────────────
+// ── Generate YAML from fixed format ────────────────────────
+// Col A = Unit ID
+// Col B = optional Floor (detected by header name)
+// Remaining cols = LED channel numbers
 function generateYaml() {
   if (!parsedRows.length) { showToast('No data loaded', true); return; }
 
-  const unitCol     = document.getElementById('map-unit').value;
-  const channelCol  = document.getElementById('map-channels').value;
-  const floorCol    = document.getElementById('map-floor').value;
-  const statusCol   = document.getElementById('map-status').value;
+  const headerRow    = (parsedRows[0] || []).map(v => String(v || '').trim().toLowerCase());
+  const floorColIdx  = headerRow.indexOf('floor'); // -1 if absent
+  const hasFloorCol  = floorColIdx !== -1;
 
-  if (unitCol === '') { showToast('Unit ID column is required', true); return; }
-
-  const headers = parsedRows[0];
-  const dataRows = parsedRows.slice(1).filter(r => r.some(c => c !== ''));
+  const dataRows = parsedRows.slice(1).filter(row =>
+    row[0] !== null && row[0] !== undefined && String(row[0]).trim() !== ''
+  );
+  if (!dataRows.length) { showToast('No data rows found', true); return; }
 
   const unit_channel_map = {};
-  const floorUnitsMap = {};   // floor → [unit_ids]
-  const statusSet = new Set();
 
   dataRows.forEach(row => {
-    const unitId = String(row[unitCol] || '').trim();
-    if (!unitId) return;
-
-    // Channels
-    let channels = [];
-    if (channelCol !== '') {
-      const raw = String(row[channelCol] || '').trim();
-      if (raw.includes('-')) {
-        const [start, end] = raw.split('-').map(Number);
-        if (!isNaN(start) && !isNaN(end)) channels = Array.from({length: end - start + 1}, (_, i) => start + i);
-      } else {
-        channels = raw.split(/[,\s]+/).map(Number).filter(n => !isNaN(n));
-      }
-    }
+    const unitId = String(row[0]).trim();
+    // Channels: all numeric cells, skipping col A and the floor col (if present)
+    const channels = row
+      .map((v, i) => ({ v, i }))
+      .filter(({ v, i }) =>
+        i !== 0 &&
+        i !== (hasFloorCol ? floorColIdx : -1) &&
+        v !== null && v !== undefined && v !== '' && !isNaN(Number(v))
+      )
+      .map(({ v }) => Number(v));
     unit_channel_map[unitId] = channels;
-
-    // Floor grouping
-    if (floorCol !== '') {
-      const fl = parseInt(row[floorCol]);
-      if (!isNaN(fl)) {
-        if (!floorUnitsMap[fl]) floorUnitsMap[fl] = [];
-        floorUnitsMap[fl].push(...channels);
-      }
-    }
-
-    // Status set
-    if (statusCol !== '') {
-      const st = String(row[statusCol] || '').trim().toLowerCase();
-      if (st) statusSet.add(st);
-    }
   });
 
-  // Floor channel map: from units OR manual textarea
-  let floor_channel_map = {};
-
-  // From units (auto-derive min/max per floor)
-  if (Object.keys(floorUnitsMap).length) {
-    Object.entries(floorUnitsMap).forEach(([fl, chs]) => {
-      const sorted = [...new Set(chs)].sort((a,b) => a-b);
-      floor_channel_map[parseInt(fl)] = [sorted[0], sorted[sorted.length-1]];
-    });
-  }
-
-  // From textarea (override/add)
-  const manualRanges = document.getElementById('floor-ranges').value.trim();
-  if (manualRanges) {
-    manualRanges.split('\n').forEach(line => {
+  // Floor channel map — textarea value (auto-filled or manual)
+  const floor_channel_map = {};
+  const rangeText = document.getElementById('floor-ranges').value.trim();
+  if (rangeText) {
+    rangeText.split('\n').forEach(line => {
       const match = line.match(/(\d+)\s*[:\-]\s*(\d+)\s*[-–]\s*(\d+)/);
       if (match) {
         floor_channel_map[parseInt(match[1])] = [parseInt(match[2]), parseInt(match[3])];
@@ -627,75 +648,51 @@ function generateYaml() {
     });
   }
 
-  // Build default status_colour, merging detected statuses
-  const defaultColours = {
-    available: [50, 255, 100],
-    selected:  [100, 150, 255],
-    reserved:  [255, 200, 0],
-    sold:      [255, 50, 50],
-    off:       [0, 0, 0],
-  };
-  const status_colour = { ...defaultColours };
-  statusSet.forEach(st => {
-    if (!status_colour[st]) status_colour[st] = [128, 128, 128];
-  });
-
-  generatedConfig = { unit_channel_map, floor_channel_map, status_colour };
+  generatedConfig = { unit_channel_map, floor_channel_map };
 
   const yaml = configToYaml(generatedConfig);
   document.getElementById('yaml-text').value = yaml;
   document.getElementById('btn-copy').disabled = false;
   document.getElementById('btn-save').disabled = false;
 
-  document.getElementById('stat-units').textContent = Object.keys(unit_channel_map).length + ' units';
+  document.getElementById('stat-units').textContent  = Object.keys(unit_channel_map).length + ' units';
   document.getElementById('stat-floors').textContent = Object.keys(floor_channel_map).length + ' floors';
 
-  showToast('YAML generated — review before saving', false, true);
+  const src = hasFloorCol ? 'auto-detected from Floor column' : 'manual entry';
+  showToast('YAML generated — floor ranges: ' + src, false, true);
 }
 
-// ── Minimal YAML serialiser ─────────────────────────────────
+// ── YAML serialiser (maps only — no status_colour) ──────────
 function configToYaml(cfg) {
-  let out = '';
-
-  out += 'unit_channel_map:\n';
+  let out = 'unit_channel_map:\n';
   for (const [k, v] of Object.entries(cfg.unit_channel_map)) {
     out += `  ${k}: [${v.join(', ')}]\n`;
   }
-
   out += '\nfloor_channel_map:\n';
-  for (const [fl, range] of Object.entries(cfg.floor_channel_map)) {
-    out += `  ${fl}: [${range.join(', ')}]\n`;
+  if (Object.keys(cfg.floor_channel_map).length) {
+    for (const [fl, range] of Object.entries(cfg.floor_channel_map)) {
+      out += `  ${fl}: [${range.join(', ')}]\n`;
+    }
+  } else {
+    out += '  # No floor ranges defined\n';
   }
-
-  out += '\nstatus_colour:\n';
-  for (const [status, rgb] of Object.entries(cfg.status_colour)) {
-    const key = /\s/.test(status) ? `'${status}'` : status;
-    out += `  ${key}: [${rgb.join(', ')}]\n`;
-  }
-
   return out;
 }
 
 // ── Copy YAML ───────────────────────────────────────────────
 function copyYaml() {
-  const text = document.getElementById('yaml-text').value;
-  navigator.clipboard.writeText(text).then(() => showToast('Copied to clipboard ✓', false, true));
+  navigator.clipboard.writeText(document.getElementById('yaml-text').value)
+    .then(() => showToast('Copied to clipboard ✓', false, true));
 }
 
-// ── Save YAML to server ─────────────────────────────────────
+// ── Save maps.yaml ──────────────────────────────────────────
 async function saveYaml() {
-  const yamlText = document.getElementById('yaml-text').value.trim();
-  if (!yamlText) { showToast('Nothing to save', true); return; }
-
-  // Use generatedConfig or re-parse edited textarea
-  let configToSave = generatedConfig;
-  if (!configToSave) { showToast('Parse a file first', true); return; }
-
+  if (!generatedConfig) { showToast('Parse a file first', true); return; }
   try {
     const res = await fetch('/api/save_maps', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ config: configToSave })
+      body: JSON.stringify({ config: generatedConfig })
     });
     const data = await res.json();
     if (data.status === 'ok') {
@@ -709,10 +706,10 @@ async function saveYaml() {
   }
 }
 
-// ── Load current YAML ───────────────────────────────────────
+// ── Reload current maps.yaml ────────────────────────────────
 async function loadCurrentYaml() {
   try {
-    const res = await fetch('/api/current_maps');
+    const res  = await fetch('/api/current_maps');
     const data = await res.json();
     if (data.status === 'ok') {
       document.getElementById('current-yaml-text').textContent = configToYaml(data.config);
