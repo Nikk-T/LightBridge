@@ -103,7 +103,7 @@
     border-radius: 8px; padding: 40px 24px;
     text-align: center; cursor: pointer;
     transition: all 0.25s; background: rgba(13,21,32,0.4);
-    position: relative;
+    position: relative; z-index: 2;
   }
   #drop-zone.drag-over {
     border-color: var(--accent); background: rgba(0,212,255,0.05);
@@ -134,9 +134,9 @@
 
   /* Sheet tabs */
   #sheet-tabs {
-    display: none; padding: 0 24px 0;
+    display: none;
     border-bottom: 1px solid var(--border);
-    display: flex; gap: 4px; flex-wrap: wrap;
+    gap: 4px; flex-wrap: wrap;
     padding: 12px 24px;
   }
   .sheet-tab {
@@ -333,7 +333,7 @@
         <div class="drop-sub">or click to browse</div>
         <div id="file-name"></div>
       </div>
-      <input type="file" id="file-input" accept=".xls,.xlsx,.csv">
+      <input type="file" id="file-input" accept=".xls,.xlsx,.csv" style="display:none">
     </div>
 
     <!-- Sheet tabs -->
