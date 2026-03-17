@@ -119,5 +119,48 @@ def save_maps():
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)})
 
+# ── YAML reserved words that need quoting as keys ────────────
+_YAML_RESERVED = {'true','false','yes','no','on','off','null','~',
+                  'True','False','Yes','No','On','Off','Null'}
+
+def _safe_key(k):
+    s = str(k)
+    if s.lower() in {r.lower() for r in _YAML_RESERVED}:
+        return f"'{s}'"
+    try:
+        float(s); return f"'{s}'"
+    except ValueError:
+        pass
+    return s
+
+def build_maps_yaml(unit_channel_map, floor_channel_map):
+    """Generate maps.yaml content with correct YAML formatting."""
+    lines = ['unit_channel_map:']
+    for k, v in unit_channel_map.items():
+        channels = ','.join(str(int(x)) for x in v)
+        lines.append(f'  {_safe_key(k)}: [{channels}]')
+    lines.append('')
+    lines.append('floor_channel_map:')
+    if floor_channel_map:
+        for fl in sorted(floor_channel_map.keys(), key=lambda x: int(x)):
+            r = floor_channel_map[fl]
+            lines.append(f'  {fl}: [{r[0]}, {r[1]}]')
+    else:
+        lines.append('  # No floor ranges defined')
+    return '\n'.join(lines) + '\n'
+
+@app.route("/api/build_yaml", methods=["POST"])
+def build_yaml():
+    """Receive parsed config from JS, return correctly formatted YAML string."""
+    try:
+        data = request.json
+        ucm  = data.get("unit_channel_map", {})
+        fcm  = data.get("floor_channel_map", {})
+        yaml_str = build_maps_yaml(ucm, fcm)
+        return jsonify({"status": "ok", "yaml": yaml_str})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)})
+
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5001, debug=True)

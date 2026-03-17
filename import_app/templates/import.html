@@ -470,8 +470,8 @@ function generateYaml() {
 
   var unit_channel_map = {};
   data.forEach(function(row) {
-    var uid  = String(row[0]).trim();
-    var chs  = [];
+    var uid = String(row[0]).trim();
+    var chs = [];
     row.forEach(function(v, i) {
       if (i===0||i===fi) return;
       if (v!==null&&v!==undefined&&v!==''&&!isNaN(Number(v))) chs.push(Number(v));
@@ -483,36 +483,31 @@ function generateYaml() {
   var rt = document.getElementById('floor-ranges').value.trim();
   if (rt) {
     rt.split('\n').forEach(function(line) {
-      var m = line.match(/(\d+)\s*[:\-]\s*(\d+)\s*[-–]\s*(\d+)/);
+      var m = line.match(/(\d+)\s*[:\-]\s*(\d+)\s*[-\u2013]\s*(\d+)/);
       if (m) floor_channel_map[parseInt(m[1])] = [parseInt(m[2]), parseInt(m[3])];
     });
   }
 
   generatedConfig = { unit_channel_map:unit_channel_map, floor_channel_map:floor_channel_map };
-  document.getElementById('yaml-text').value = toYaml(generatedConfig);
-  document.getElementById('btn-copy').disabled = false;
-  document.getElementById('btn-save').disabled = false;
   document.getElementById('s-units').textContent  = Object.keys(unit_channel_map).length + ' units';
   document.getElementById('s-floors').textContent = Object.keys(floor_channel_map).length + ' floors';
-  toast('YAML generated', 'ok');
+
+  fetch('/api/build_yaml', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(generatedConfig)
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(d) {
+    if (d.status !== 'ok') { toast('YAML error: ' + d.message, 'err'); return; }
+    document.getElementById('yaml-text').value = d.yaml;
+    document.getElementById('btn-copy').disabled = false;
+    document.getElementById('btn-save').disabled = false;
+    toast('YAML generated', 'ok');
+  })
+  .catch(function(e){ toast('Error: ' + e.message, 'err'); });
 }
 
-function toYaml(cfg) {
-  var out = 'unit_channel_map:\n';
-  Object.keys(cfg.unit_channel_map).forEach(function(k) {
-    out += '  ' + k + ': [' + cfg.unit_channel_map[k].join(', ') + ']\n';
-  });
-  out += '\nfloor_channel_map:\n';
-  var fkeys = Object.keys(cfg.floor_channel_map);
-  if (fkeys.length) {
-    fkeys.forEach(function(fl) {
-      out += '  ' + fl + ': [' + cfg.floor_channel_map[fl].join(', ') + ']\n';
-    });
-  } else {
-    out += '  # No floor ranges defined\n';
-  }
-  return out;
-}
 
 function copyYaml() {
   navigator.clipboard.writeText(document.getElementById('yaml-text').value)
