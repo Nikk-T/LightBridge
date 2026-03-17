@@ -6,9 +6,6 @@
 <title>LightBridge — Import Tool</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
-</head>
-<body>
-
 <style>
 :root {
   --bg:     #080c10;
@@ -37,8 +34,7 @@ body::before {
 header {
   position: relative; z-index: 10;
   display: flex; align-items: center; justify-content: space-between;
-  padding: 18px 32px;
-  border-bottom: 1px solid var(--border);
+  padding: 18px 32px; border-bottom: 1px solid var(--border);
   background: rgba(13,21,32,0.95);
 }
 .logo { display: flex; align-items: center; gap: 14px; }
@@ -47,536 +43,513 @@ header {
   border-radius: 6px; position: relative; overflow: hidden;
 }
 .logo-icon::after {
-  content: ''; position: absolute;
-  width: 14px; height: 14px; top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
+  content: ''; position: absolute; width: 14px; height: 14px;
+  top: 50%; left: 50%; transform: translate(-50%,-50%);
   background: var(--accent); border-radius: 50%;
   animation: pulse 2s ease-in-out infinite;
 }
-@keyframes pulse { 0%,100%{opacity:1;transform:translate(-50%,-50%) scale(1)} 50%{opacity:.6;transform:translate(-50%,-50%) scale(.85)} }
+@keyframes pulse {
+  0%,100% { opacity:1; transform:translate(-50%,-50%) scale(1); }
+  50%      { opacity:.6; transform:translate(-50%,-50%) scale(.85); }
+}
 .logo-text { font-size: 22px; font-weight: 700; letter-spacing: 3px; color:#fff; text-transform:uppercase; }
 .logo-text span { color: var(--accent); }
-.port-badge {
-  font-family: 'Share Tech Mono', monospace; font-size: 11px;
-  color: var(--muted); letter-spacing: 2px;
-}
+.badge { font-family:'Share Tech Mono',monospace; font-size:11px; color:var(--muted); letter-spacing:2px; }
 
-/* Page layout */
 .page {
   position: relative; z-index: 1;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: grid; grid-template-columns: 1fr 1fr;
   height: calc(100vh - 69px);
 }
 
-/* ── Left pane ── */
-.left-pane {
-  border-right: 1px solid var(--border);
-  display: flex; flex-direction: column;
-  overflow-y: auto;
-}
+/* ── Left ── */
+.left { border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow-y: auto; }
 
 /* Drop zone */
-.drop-zone-wrap { padding: 24px 24px 0; flex-shrink: 0; }
+.drop-wrap { padding: 20px 20px 0; flex-shrink: 0; }
 #drop-zone {
-  border: 2px dashed var(--border);
-  border-radius: 8px; padding: 36px 24px;
-  text-align: center; cursor: pointer;
-  transition: border-color 0.2s, background 0.2s;
-  background: rgba(13,21,32,0.4);
+  border: 2px dashed var(--border); border-radius: 8px;
+  padding: 32px 20px; text-align: center; cursor: pointer;
+  background: rgba(13,21,32,0.4); transition: border-color .2s, background .2s;
   user-select: none;
 }
-#drop-zone.drag-over {
-  border-color: var(--accent);
-  background: rgba(0,212,255,0.06);
-}
-#drop-zone.has-file {
-  border-color: var(--green); border-style: solid;
-  background: rgba(50,255,106,0.04);
-}
-.drop-icon { font-size: 32px; display: block; margin-bottom: 10px; }
-.drop-text { font-size: 15px; font-weight: 600; color: var(--muted); letter-spacing: 1px; margin-bottom: 4px; }
-.drop-sub  { font-size: 12px; color: var(--muted); font-family: 'Share Tech Mono', monospace; }
-#file-name {
-  display: none; margin-top: 10px; padding: 6px 12px;
+#drop-zone:hover,
+#drop-zone.over { border-color: var(--accent); background: rgba(0,212,255,0.05); }
+#drop-zone.loaded { border-color: var(--green); border-style: solid; background: rgba(50,255,106,0.04); }
+.dz-icon { font-size: 28px; display: block; margin-bottom: 8px; }
+.dz-title { font-size: 15px; font-weight: 600; color: var(--muted); letter-spacing: 1px; }
+.dz-sub   { font-size: 12px; color: var(--muted); font-family: 'Share Tech Mono',monospace; margin-top: 4px; }
+#dz-filename {
+  display: none; margin-top: 10px; padding: 5px 12px;
   background: rgba(50,255,106,0.08); border: 1px solid var(--green);
-  border-radius: 4px; font-family: 'Share Tech Mono', monospace;
+  border-radius: 4px; font-family: 'Share Tech Mono',monospace;
   font-size: 12px; color: var(--green);
 }
+#dz-spinner { display: none; margin-top: 10px; font-family:'Share Tech Mono',monospace; font-size:11px; color:var(--accent); }
 
 /* Sheet tabs */
 #sheet-tabs {
   display: none; flex-wrap: wrap; gap: 4px;
-  padding: 14px 24px; border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
+  padding: 12px 20px; border-bottom: 1px solid var(--border); flex-shrink: 0;
 }
-.sheet-tab {
-  font-family: 'Share Tech Mono', monospace; font-size: 11px;
-  padding: 5px 12px; border: 1px solid var(--border);
-  background: transparent; color: var(--muted); cursor: pointer;
-  border-radius: 3px; transition: all 0.15s; letter-spacing: 1px;
+.tab {
+  font-family:'Share Tech Mono',monospace; font-size:11px; letter-spacing:1px;
+  padding: 4px 12px; border: 1px solid var(--border); border-radius: 3px;
+  background: transparent; color: var(--muted); cursor: pointer; transition: all .15s;
 }
-.sheet-tab:hover  { border-color: var(--accent); color: var(--accent); }
-.sheet-tab.active { border-color: var(--accent); background: rgba(0,212,255,0.1); color: var(--accent); }
+.tab:hover  { border-color:var(--accent); color:var(--accent); }
+.tab.active { border-color:var(--accent); background:rgba(0,212,255,0.1); color:var(--accent); }
 
-/* Config section */
-.config-section { padding: 20px 24px; flex-shrink: 0; }
-.section-title {
+/* Config */
+.cfg { padding: 16px 20px; flex-shrink: 0; }
+.cfg-title {
   font-size: 10px; font-weight: 700; letter-spacing: 3px;
   text-transform: uppercase; color: var(--muted);
-  margin-bottom: 10px; display: flex; align-items: center; gap: 8px;
+  display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
 }
-.section-title::after { content:''; flex:1; height:1px; background: var(--border); }
+.cfg-title::after { content:''; flex:1; height:1px; background:var(--border); }
 .hint {
-  font-family: 'Share Tech Mono', monospace; font-size: 11px;
-  color: var(--muted); padding: 10px 12px;
-  background: rgba(255,255,255,0.02); border: 1px solid var(--border);
-  border-radius: 4px; line-height: 1.7; margin-bottom: 12px;
+  font-family:'Share Tech Mono',monospace; font-size:11px; color:var(--muted);
+  padding: 8px 10px; background:rgba(255,255,255,0.02);
+  border: 1px solid var(--border); border-radius:4px; line-height:1.7; margin-bottom:10px;
 }
-.hint strong { color: var(--accent); }
-#floor-status-banner {
-  display: none; padding: 8px 12px; border-radius: 4px;
-  font-family: 'Share Tech Mono', monospace; font-size: 11px;
-  margin-bottom: 8px;
+.hint strong { color:var(--accent); }
+#floor-banner {
+  display: none; padding: 7px 10px; border-radius: 4px;
+  font-family:'Share Tech Mono',monospace; font-size:11px; margin-bottom: 8px;
 }
-textarea.cfg-input {
-  width: 100%;
-  background: var(--bg); border: 1px solid var(--border);
-  color: var(--text); font-family: 'Share Tech Mono', monospace;
-  font-size: 12px; padding: 10px; border-radius: 3px;
-  resize: vertical; line-height: 1.7; outline: none;
-  transition: border-color 0.2s;
+textarea {
+  width: 100%; background: var(--bg); border: 1px solid var(--border);
+  color: var(--text); font-family:'Share Tech Mono',monospace;
+  font-size:12px; padding:8px; border-radius:3px;
+  resize:vertical; line-height:1.7; outline:none; transition: border-color .2s;
 }
-textarea.cfg-input:focus { border-color: var(--accent); }
+textarea:focus { border-color: var(--accent); }
 
-/* Preview table */
-#preview-wrap {
-  display: none; overflow: auto; flex-shrink: 0;
-  max-height: 200px; border-top: 1px solid var(--border);
+/* Preview */
+#preview { display:none; overflow:auto; max-height:180px; border-top:1px solid var(--border); flex-shrink:0; }
+table { width:100%; border-collapse:collapse; font-family:'Share Tech Mono',monospace; font-size:11px; }
+th {
+  background:var(--panel); color:var(--accent); padding:6px 10px;
+  border-bottom:1px solid var(--border); white-space:nowrap; position:sticky; top:0;
 }
-#preview-table { width: 100%; border-collapse: collapse; font-family: 'Share Tech Mono', monospace; font-size: 11px; }
-#preview-table th {
-  background: var(--panel); color: var(--accent); padding: 8px 12px;
-  border-bottom: 1px solid var(--border); white-space: nowrap;
-  font-weight: 700; letter-spacing: 1px; position: sticky; top: 0;
-}
-#preview-table td {
-  padding: 6px 12px; border-bottom: 1px solid rgba(26,46,68,0.5);
-  color: var(--text); white-space: nowrap;
-}
-#preview-table tr:hover td { background: rgba(0,212,255,0.04); }
+td { padding:5px 10px; border-bottom:1px solid rgba(26,46,68,0.5); color:var(--text); white-space:nowrap; }
+tr:hover td { background:rgba(0,212,255,0.04); }
 
-/* ── Right panes ── */
-.right-pane {
-  display: flex; flex-direction: column;
-  overflow: hidden;
+/* ── Right ── */
+.right { display:flex; flex-direction:column; overflow:hidden; }
+.rtop { flex:1; display:flex; flex-direction:column; overflow:hidden; border-bottom:1px solid var(--border); }
+.rbot { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+.ph {
+  padding:12px 20px; border-bottom:1px solid var(--border);
+  display:flex; align-items:center; justify-content:space-between; flex-shrink:0;
 }
-.pane-header {
-  padding: 14px 24px; border-bottom: 1px solid var(--border);
-  display: flex; align-items: center; justify-content: space-between;
-  flex-shrink: 0;
-}
-.pane-title {
-  font-size: 10px; font-weight: 700; letter-spacing: 3px;
-  text-transform: uppercase; color: var(--muted);
-}
-.right-top    { border-bottom: 1px solid var(--border); flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-.right-bottom { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-
-#yaml-output { flex: 1; overflow-y: auto; }
+.ph-title { font-size:10px; font-weight:700; letter-spacing:3px; text-transform:uppercase; color:var(--muted); }
+.ph-actions { display:flex; gap:6px; }
+#yaml-out { flex:1; overflow-y:auto; }
 #yaml-text {
-  display: block; width: 100%; height: 100%;
-  font-family: 'Share Tech Mono', monospace; font-size: 12px;
-  line-height: 1.8; color: var(--text); padding: 18px 24px;
-  white-space: pre; background: transparent; border: none; resize: none;
-  outline: none; caret-color: var(--accent);
+  display:block; width:100%; min-height:100%;
+  font-family:'Share Tech Mono',monospace; font-size:12px; line-height:1.8;
+  color:var(--text); padding:16px 20px; white-space:pre;
+  background:transparent; border:none; resize:none; outline:none; caret-color:var(--accent);
 }
-#current-yaml-wrap { flex: 1; overflow-y: auto; background: rgba(13,21,32,0.5); }
-#current-yaml-text {
-  font-family: 'Share Tech Mono', monospace; font-size: 11px;
-  color: var(--muted); padding: 16px 24px; white-space: pre; line-height: 1.8;
-}
+#cur-yaml { flex:1; overflow-y:auto; background:rgba(13,21,32,0.5); }
+pre { font-family:'Share Tech Mono',monospace; font-size:11px; color:var(--muted); padding:14px 20px; line-height:1.8; white-space:pre; }
 
 /* Status bar */
-#status-bar {
-  padding: 8px 24px; border-top: 1px solid var(--border);
-  font-family: 'Share Tech Mono', monospace; font-size: 11px;
-  color: var(--muted); display: flex; gap: 16px; flex-shrink: 0;
+.sbar {
+  padding:6px 20px; border-top:1px solid var(--border);
+  font-family:'Share Tech Mono',monospace; font-size:11px; color:var(--muted);
+  display:flex; gap:14px; flex-shrink:0;
 }
-.stat-item { display: flex; align-items: center; gap: 6px; }
-.stat-dot  { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
-.stat-green { color: var(--green); }
-.stat-blue  { color: #6496ff; }
-.stat-amber { color: var(--amber); }
+.si { display:flex; align-items:center; gap:5px; }
+.sd { width:6px; height:6px; border-radius:50%; background:currentColor; }
+.cg { color:var(--green); } .cb { color:#6496ff; } .ca { color:var(--amber); }
 
 /* Buttons */
 .btn {
-  background: transparent; border: 1px solid var(--border);
-  color: var(--text); font-family: 'Rajdhani', sans-serif;
-  font-size: 13px; font-weight: 600; letter-spacing: 1px;
-  padding: 7px 16px; border-radius: 3px; cursor: pointer;
-  text-transform: uppercase; transition: all 0.2s; white-space: nowrap;
+  background:transparent; border:1px solid var(--border); color:var(--text);
+  font-family:'Rajdhani',sans-serif; font-size:13px; font-weight:600; letter-spacing:1px;
+  padding:6px 14px; border-radius:3px; cursor:pointer;
+  text-transform:uppercase; transition:all .2s; white-space:nowrap;
 }
-.btn:hover { border-color: var(--accent); color: var(--accent); }
-.btn:disabled { opacity: 0.35; cursor: not-allowed; }
-.btn.primary { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 700; }
-.btn.primary:hover:not(:disabled) { opacity: 0.85; }
+.btn:hover { border-color:var(--accent); color:var(--accent); }
+.btn:disabled { opacity:.35; cursor:not-allowed; }
+.btn.p { background:var(--accent); color:var(--bg); border-color:var(--accent); font-weight:700; }
+.btn.p:hover:not(:disabled) { opacity:.85; }
 
 /* Toast */
 #toast {
-  position: fixed; bottom: 24px; right: 24px; z-index: 999;
-  background: var(--panel); border: 1px solid var(--border);
-  border-radius: 5px; padding: 10px 18px;
-  font-family: 'Share Tech Mono', monospace; font-size: 13px; color: var(--accent);
-  opacity: 0; pointer-events: none; transform: translateY(8px);
-  transition: all 0.25s;
+  position:fixed; bottom:20px; right:20px; z-index:999;
+  background:var(--panel); border:1px solid var(--border); border-radius:5px;
+  padding:9px 16px; font-family:'Share Tech Mono',monospace; font-size:12px; color:var(--accent);
+  opacity:0; pointer-events:none; transform:translateY(8px); transition:all .25s;
 }
-#toast.show    { opacity: 1; transform: translateY(0); }
-#toast.ok      { border-color: var(--green); color: var(--green); }
-#toast.error   { border-color: var(--red);   color: var(--red); }
-#toast.success { border-color: var(--green); color: var(--green); }
+#toast.show { opacity:1; transform:translateY(0); }
+#toast.ok  { border-color:var(--green); color:var(--green); }
+#toast.err { border-color:var(--red);   color:var(--red); }
 
-::-webkit-scrollbar { width: 5px; height: 5px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar { width:5px; height:5px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
 </style>
+</head>
+<body>
 
 <header>
   <div class="logo">
     <div class="logo-icon"></div>
     <div class="logo-text">Light<span>Bridge</span></div>
   </div>
-  <div class="port-badge">IMPORT TOOL &nbsp;·&nbsp; PORT 5001</div>
+  <span class="badge">IMPORT TOOL · PORT 5001</span>
 </header>
 
 <div class="page">
 
-  <!-- ══ LEFT PANE ══ -->
-  <div class="left-pane">
+  <!-- ══ LEFT ══ -->
+  <div class="left">
 
-    <div class="drop-zone-wrap">
+    <div class="drop-wrap">
       <div id="drop-zone">
-        <span class="drop-icon">📊</span>
-        <div class="drop-text">Drop XLS / XLSX / CSV here</div>
-        <div class="drop-sub">or click to browse</div>
-        <div id="file-name"></div>
+        <span class="dz-icon">📊</span>
+        <div class="dz-title">Drop XLS / XLSX / CSV here</div>
+        <div class="dz-sub">or click to browse</div>
+        <div id="dz-filename"></div>
+        <div id="dz-spinner">Parsing…</div>
       </div>
     </div>
 
     <div id="sheet-tabs"></div>
 
-    <div class="config-section">
-      <div class="section-title">File Format</div>
+    <div class="cfg">
+      <div class="cfg-title">File Format</div>
       <div class="hint">
         <strong>Col A</strong> — Unit ID (e.g. A101)<br>
-        <strong>Col B</strong> — Optional: Floor number (header = <strong>Floor</strong>)<br>
+        <strong>Col B</strong> — Optional Floor number (header must be <strong>Floor</strong>)<br>
         <strong>Remaining cols</strong> — LED channel numbers, one per cell<br>
-        Row 1 is always treated as header and skipped.
+        Row 1 is treated as header and skipped.
       </div>
 
-      <div class="section-title">Floor Channel Ranges</div>
-      <div id="floor-status-banner"></div>
+      <div class="cfg-title">Floor Channel Ranges</div>
+      <div id="floor-banner"></div>
       <div id="floor-hint" class="hint">
-        Load a file — ranges are auto-detected if a <strong>Floor</strong> column exists,
-        otherwise enter manually below.
+        Load a file — auto-detected if <strong>Floor</strong> column present,
+        otherwise enter manually.
       </div>
-      <textarea class="cfg-input" id="floor-ranges" rows="5"
-        placeholder="1: 0-20&#10;2: 21-45&#10;3: 46-70"></textarea>
+      <textarea id="floor-ranges" rows="5" placeholder="1: 0-20&#10;2: 21-45&#10;3: 46-70"></textarea>
 
-      <button class="btn primary" onclick="generateYaml()" style="margin-top:10px;width:100%">
+      <button class="btn p" onclick="generateYaml()" style="margin-top:10px;width:100%">
         ⚡ Generate YAML Preview
       </button>
     </div>
 
-    <div id="preview-wrap">
-      <table id="preview-table"><thead></thead><tbody></tbody></table>
+    <div id="preview">
+      <table><thead id="prev-head"></thead><tbody id="prev-body"></tbody></table>
     </div>
 
   </div>
 
-  <!-- ══ RIGHT PANE ══ -->
-  <div class="right-pane">
-
-    <div class="right-top">
-      <div class="pane-header">
-        <span class="pane-title">Generated YAML</span>
-        <div style="display:flex;gap:8px">
-          <button class="btn" onclick="copyYaml()" id="btn-copy" disabled>Copy</button>
-          <button class="btn primary" onclick="saveYaml()" id="btn-save" disabled>💾 Save to maps.yaml</button>
+  <!-- ══ RIGHT ══ -->
+  <div class="right">
+    <div class="rtop">
+      <div class="ph">
+        <span class="ph-title">Generated YAML</span>
+        <div class="ph-actions">
+          <button class="btn" id="btn-copy" onclick="copyYaml()" disabled>Copy</button>
+          <button class="btn p" id="btn-save" onclick="saveYaml()" disabled>💾 Save to maps.yaml</button>
         </div>
       </div>
-      <div id="yaml-output">
-        <textarea id="yaml-text" spellcheck="false"
-          placeholder="// Generated YAML will appear here..."></textarea>
+      <div id="yaml-out">
+        <textarea id="yaml-text" spellcheck="false" placeholder="// YAML appears here after parsing…"></textarea>
       </div>
-      <div id="status-bar">
-        <span class="stat-item stat-green"><span class="stat-dot"></span><span id="stat-units">0 units</span></span>
-        <span class="stat-item stat-blue"><span class="stat-dot"></span><span id="stat-floors">0 floors</span></span>
-        <span class="stat-item stat-amber"><span class="stat-dot"></span><span id="stat-rows">0 rows</span></span>
-      </div>
-    </div>
-
-    <div class="right-bottom">
-      <div class="pane-header">
-        <span class="pane-title">maps.yaml &nbsp;<span style="color:var(--muted);font-size:10px">current</span></span>
-        <button class="btn" onclick="loadCurrentYaml()">↻ Reload</button>
-      </div>
-      <div id="current-yaml-wrap">
-        <pre id="current-yaml-text">{{ current_maps_yaml }}</pre>
+      <div class="sbar">
+        <span class="si cg"><span class="sd"></span><span id="s-units">0 units</span></span>
+        <span class="si cb"><span class="sd"></span><span id="s-floors">0 floors</span></span>
+        <span class="si ca"><span class="sd"></span><span id="s-rows">0 rows</span></span>
       </div>
     </div>
-
+    <div class="rbot">
+      <div class="ph">
+        <span class="ph-title">maps.yaml <span style="font-size:10px;color:var(--muted)">current</span></span>
+        <button class="btn" onclick="reloadYaml()">↻ Reload</button>
+      </div>
+      <div id="cur-yaml">
+        <pre id="cur-text">{{ current_maps_yaml }}</pre>
+      </div>
+    </div>
   </div>
 
 </div>
 
 <div id="toast"></div>
 
-<!-- SheetJS loaded just before the script that uses it -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
-(function() {
-  // ── State ──────────────────────────────────────────────────
-  let workbook       = null;
-  let parsedRows     = [];
-  let generatedConfig = null;
+// ── State ──────────────────────────────────────────────────
+var sheets = {};          // { sheetName: [[row],...] }
+var parsedRows = [];      // currently active sheet rows
+var generatedConfig = null;
 
-  // ── Drop zone setup ─────────────────────────────────────────
-  const dropZone = document.getElementById('drop-zone');
+// ── Drop zone ───────────────────────────────────────────────
+var dz = document.getElementById('drop-zone');
 
-  dropZone.addEventListener('click', () => {
-    const inp = document.createElement('input');
-    inp.type = 'file';
-    inp.accept = '.xls,.xlsx,.csv';
-    inp.onchange = e => { if (e.target.files[0]) loadFile(e.target.files[0]); };
-    inp.click();
+dz.addEventListener('dragenter', function(e) { e.preventDefault(); e.stopPropagation(); dz.classList.add('over'); });
+dz.addEventListener('dragover',  function(e) { e.preventDefault(); e.stopPropagation(); dz.classList.add('over'); });
+dz.addEventListener('dragleave', function(e) { e.preventDefault(); e.stopPropagation(); dz.classList.remove('over'); });
+dz.addEventListener('drop', function(e) {
+  e.preventDefault(); e.stopPropagation();
+  dz.classList.remove('over');
+  var file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+  if (file) uploadFile(file);
+});
+dz.addEventListener('click', function() {
+  var inp = document.createElement('input');
+  inp.type = 'file';
+  inp.accept = '.xls,.xlsx,.csv';
+  inp.addEventListener('change', function() {
+    if (inp.files && inp.files[0]) uploadFile(inp.files[0]);
   });
+  document.body.appendChild(inp);
+  inp.style.display = 'none';
+  inp.click();
+  setTimeout(function() { document.body.removeChild(inp); }, 10000);
+});
 
-  dropZone.addEventListener('dragover',  e => { e.preventDefault(); e.stopPropagation(); dropZone.classList.add('drag-over'); });
-  dropZone.addEventListener('dragleave', e => { e.preventDefault(); e.stopPropagation(); dropZone.classList.remove('drag-over'); });
-  dropZone.addEventListener('drop',      e => {
-    e.preventDefault(); e.stopPropagation();
-    dropZone.classList.remove('drag-over');
-    const file = e.dataTransfer.files[0];
-    if (file) loadFile(file);
+// ── Upload & parse server-side ──────────────────────────────
+function uploadFile(file) {
+  var ext = file.name.split('.').pop().toLowerCase();
+  if (['xls','xlsx','csv'].indexOf(ext) === -1) {
+    toast('Use XLS, XLSX or CSV', 'err'); return;
+  }
+  document.getElementById('dz-filename').style.display = 'none';
+  document.getElementById('dz-spinner').style.display  = 'block';
+  dz.classList.remove('loaded');
+
+  var fd = new FormData();
+  fd.append('file', file);
+
+  fetch('/api/parse_file', { method: 'POST', body: fd })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      document.getElementById('dz-spinner').style.display = 'none';
+      if (data.status !== 'ok') { toast('Parse error: ' + data.message, 'err'); return; }
+
+      sheets = data.sheets;
+      dz.classList.add('loaded');
+      var fn = document.getElementById('dz-filename');
+      fn.textContent = '📄 ' + file.name;
+      fn.style.display = 'block';
+
+      renderTabs();
+      var firstSheet = Object.keys(sheets)[0];
+      selectSheet(firstSheet);
+      toast('Loaded: ' + file.name, 'ok');
+    })
+    .catch(function(e) {
+      document.getElementById('dz-spinner').style.display = 'none';
+      toast('Upload failed: ' + e.message, 'err');
+    });
+}
+
+// ── Sheet tabs ──────────────────────────────────────────────
+function renderTabs() {
+  var names = Object.keys(sheets);
+  var tabs  = document.getElementById('sheet-tabs');
+  tabs.innerHTML = names.map(function(n, i) {
+    return '<button class="tab' + (i===0?' active':'') + '" onclick="selectSheet(\'' + n.replace(/'/g,"\\'") + '\')">' + n + '</button>';
+  }).join('');
+  tabs.style.display = names.length > 1 ? 'flex' : 'none';
+}
+
+function selectSheet(name) {
+  document.querySelectorAll('.tab').forEach(function(t) {
+    t.classList.toggle('active', t.textContent === name);
   });
+  parsedRows = sheets[name] || [];
+  renderPreview();
+  detectFloor();
+}
 
-  // ── Load file ───────────────────────────────────────────────
-  function loadFile(file) {
-    const ext = file.name.split('.').pop().toLowerCase();
-    if (!['xls','xlsx','csv'].includes(ext)) {
-      showToast('Please use an XLS, XLSX, or CSV file', 'error'); return;
+// ── Preview ─────────────────────────────────────────────────
+function renderPreview() {
+  var wrap = document.getElementById('preview');
+  if (!parsedRows.length) { wrap.style.display='none'; return; }
+
+  var maxCols = 0;
+  parsedRows.forEach(function(r){ if(r.length > maxCols) maxCols = r.length; });
+
+  var header = parsedRows[0] || [];
+  var cols = [];
+  for (var i=0; i<maxCols; i++) {
+    var h = header[i];
+    cols.push((h !== null && h !== undefined && h !== '') ? String(h) : String.fromCharCode(65+i));
+  }
+
+  document.getElementById('prev-head').innerHTML =
+    '<tr>' + cols.map(function(h){ return '<th>'+h+'</th>'; }).join('') + '</tr>';
+
+  var bodyRows = parsedRows.slice(1, 9);
+  document.getElementById('prev-body').innerHTML = bodyRows.map(function(row){
+    var cells = '';
+    for (var i=0; i<maxCols; i++) {
+      var v = row[i];
+      cells += '<td>' + (v !== null && v !== undefined ? v : '') + '</td>';
     }
-    const nameEl = document.getElementById('file-name');
-    nameEl.textContent = '📄 ' + file.name;
-    nameEl.style.display = 'block';
-    dropZone.classList.add('has-file');
+    return '<tr>' + cells + '</tr>';
+  }).join('');
 
-    const reader = new FileReader();
-    reader.onload = ev => {
-      try {
-        workbook = XLSX.read(ev.target.result, { type: 'array' });
-        renderSheetTabs();
-        selectSheet(workbook.SheetNames[0]);
-        showToast('Loaded: ' + file.name, 'ok');
-      } catch(err) {
-        showToast('Parse error: ' + err.message, 'error');
-      }
-    };
-    reader.onerror = () => showToast('Could not read file', 'error');
-    reader.readAsArrayBuffer(file);
-  }
+  wrap.style.display = 'block';
+  document.getElementById('s-rows').textContent = (parsedRows.length-1) + ' rows';
+}
 
-  // ── Sheet tabs ──────────────────────────────────────────────
-  function renderSheetTabs() {
-    const tabs = document.getElementById('sheet-tabs');
-    tabs.innerHTML = workbook.SheetNames.map((name, i) =>
-      `<button class="sheet-tab${i===0?' active':''}" onclick="selectSheet('${name}')">${name}</button>`
-    ).join('');
-    tabs.style.display = 'flex';
-  }
+// ── Floor detection ──────────────────────────────────────────
+function detectFloor() {
+  var banner   = document.getElementById('floor-banner');
+  var hint     = document.getElementById('floor-hint');
+  var textarea = document.getElementById('floor-ranges');
+  var header   = (parsedRows[0]||[]).map(function(v){ return String(v||'').trim().toLowerCase(); });
+  var fi       = header.indexOf('floor');
 
-  window.selectSheet = function(name) {
-    document.querySelectorAll('.sheet-tab').forEach(t =>
-      t.classList.toggle('active', t.textContent === name));
-    const ws = workbook.Sheets[name];
-    parsedRows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
-    renderPreview();
-    detectFloorColumn();
-  };
+  hint.style.display = 'none';
 
-  // ── Preview table ───────────────────────────────────────────
-  function renderPreview() {
-    const wrap = document.getElementById('preview-wrap');
-    if (!parsedRows.length) { wrap.style.display = 'none'; return; }
-
-    const maxCols  = Math.max(...parsedRows.map(r => r.length));
-    const header   = parsedRows[0] || [];
-    const colNames = Array.from({length: maxCols}, (_, i) =>
-      (header[i] !== null && header[i] !== undefined && header[i] !== '')
-        ? String(header[i]) : String.fromCharCode(65 + i));
-
-    document.querySelector('#preview-table thead').innerHTML =
-      '<tr>' + colNames.map(h => `<th>${h}</th>`).join('') + '</tr>';
-    document.querySelector('#preview-table tbody').innerHTML =
-      parsedRows.slice(1, 8).map(row =>
-        '<tr>' + Array.from({length: maxCols}, (_, i) =>
-          `<td>${row[i] !== null && row[i] !== undefined ? row[i] : ''}</td>`
-        ).join('') + '</tr>'
-      ).join('');
-
-    wrap.style.display = 'block';
-    document.getElementById('stat-rows').textContent = (parsedRows.length - 1) + ' rows';
-  }
-
-  // ── Detect Floor column ─────────────────────────────────────
-  function detectFloorColumn() {
-    const banner   = document.getElementById('floor-status-banner');
-    const hint     = document.getElementById('floor-hint');
-    const textarea = document.getElementById('floor-ranges');
-    const header   = (parsedRows[0] || []).map(v => String(v || '').trim().toLowerCase());
-    const floorIdx = header.indexOf('floor');
-
-    if (floorIdx === -1) {
-      banner.style.cssText = 'display:block;padding:8px 12px;border-radius:4px;font-family:"Share Tech Mono",monospace;font-size:11px;margin-bottom:8px;background:rgba(255,200,0,0.08);border:1px solid var(--amber);color:var(--amber)';
-      banner.textContent = '⚠ No "Floor" column — enter ranges manually.';
-      hint.style.display = 'none';
-      textarea.style.borderColor = 'var(--amber)';
+  if (fi === -1) {
+    setBanner(banner, 'amber', '⚠ No "Floor" column found — enter ranges manually.');
+    textarea.style.borderColor = 'var(--amber)';
+  } else {
+    var res = calcFloorRanges(fi);
+    if (res.ambiguous.length) {
+      setBanner(banner, 'red', '⚠ Ambiguous ranges on floor(s): ' + res.ambiguous.join(', ') + ' — review below.');
+      textarea.style.borderColor = 'var(--red)';
     } else {
-      const result = computeFloorRanges(floorIdx);
-      if (result.ambiguous.length) {
-        banner.style.cssText = 'display:block;padding:8px 12px;border-radius:4px;font-family:"Share Tech Mono",monospace;font-size:11px;margin-bottom:8px;background:rgba(255,50,50,0.08);border:1px solid var(--red);color:var(--red)';
-        banner.textContent = '⚠ Ambiguous ranges on floor(s): ' + result.ambiguous.join(', ') + ' — review below.';
-        textarea.style.borderColor = 'var(--red)';
-      } else {
-        banner.style.cssText = 'display:block;padding:8px 12px;border-radius:4px;font-family:"Share Tech Mono",monospace;font-size:11px;margin-bottom:8px;background:rgba(50,255,100,0.06);border:1px solid var(--green);color:var(--green)';
-        banner.textContent = '✓ Floor column detected — auto-calculated (' + Object.keys(result.ranges).length + ' floors).';
-        textarea.style.borderColor = 'var(--green)';
-      }
-      hint.style.display = 'none';
-      textarea.value = Object.entries(result.ranges)
-        .sort(([a],[b]) => Number(a) - Number(b))
-        .map(([fl,[s,e]]) => `${fl}: ${s}-${e}`).join('\n');
+      setBanner(banner, 'green', '✓ Floor column detected — auto-calculated (' + Object.keys(res.ranges).length + ' floors).');
+      textarea.style.borderColor = 'var(--green)';
     }
+    textarea.value = Object.keys(res.ranges).sort(function(a,b){return a-b;}).map(function(fl){
+      return fl + ': ' + res.ranges[fl][0] + '-' + res.ranges[fl][1];
+    }).join('\n');
   }
+}
 
-  function computeFloorRanges(floorIdx) {
-    const dataRows = parsedRows.slice(1).filter(r => r[0] !== null && r[0] !== undefined && String(r[0]).trim() !== '');
-    const floorChs = {};
-    dataRows.forEach(row => {
-      const fl = parseInt(row[floorIdx]);
-      if (isNaN(fl)) return;
-      if (!floorChs[fl]) floorChs[fl] = new Set();
-      row.forEach((v, i) => {
-        if (i === 0 || i === floorIdx) return;
-        if (v !== null && v !== undefined && v !== '' && !isNaN(Number(v)))
-          floorChs[fl].add(Number(v));
-      });
+function setBanner(el, type, msg) {
+  var colors = { green:'rgba(50,255,100,0.06)', amber:'rgba(255,200,0,0.08)', red:'rgba(255,50,50,0.08)' };
+  var borders = { green:'var(--green)', amber:'var(--amber)', red:'var(--red)' };
+  el.style.cssText = 'display:block;padding:7px 10px;border-radius:4px;margin-bottom:8px;' +
+    'font-family:"Share Tech Mono",monospace;font-size:11px;line-height:1.5;' +
+    'background:' + colors[type] + ';border:1px solid ' + borders[type] + ';color:' + borders[type] + ';';
+  el.textContent = msg;
+}
+
+function calcFloorRanges(fi) {
+  var fch = {};
+  parsedRows.slice(1).forEach(function(row) {
+    if (row[0] === null || row[0] === undefined || String(row[0]).trim() === '') return;
+    var fl = parseInt(row[fi]);
+    if (isNaN(fl)) return;
+    if (!fch[fl]) fch[fl] = [];
+    row.forEach(function(v, i) {
+      if (i===0||i===fi) return;
+      if (v !== null && v !== undefined && v !== '' && !isNaN(Number(v))) fch[fl].push(Number(v));
     });
-    const ranges = {}, ambiguous = [];
-    Object.entries(floorChs).forEach(([fl, chSet]) => {
-      const sorted = [...chSet].sort((a,b) => a-b);
-      if (sorted.length !== sorted[sorted.length-1] - sorted[0] + 1) ambiguous.push(fl);
-      ranges[fl] = [sorted[0], sorted[sorted.length-1]];
+  });
+  var ranges={}, ambiguous=[];
+  Object.keys(fch).forEach(function(fl) {
+    var s = fch[fl].sort(function(a,b){return a-b;});
+    if (s.length !== s[s.length-1]-s[0]+1) ambiguous.push(fl);
+    ranges[fl] = [s[0], s[s.length-1]];
+  });
+  return { ranges:ranges, ambiguous:ambiguous };
+}
+
+// ── Generate YAML ────────────────────────────────────────────
+function generateYaml() {
+  if (!parsedRows.length) { toast('No file loaded', 'err'); return; }
+
+  var header = (parsedRows[0]||[]).map(function(v){ return String(v||'').trim().toLowerCase(); });
+  var fi     = header.indexOf('floor');
+  var data   = parsedRows.slice(1).filter(function(r){ return r[0]!==null&&r[0]!==undefined&&String(r[0]).trim()!==''; });
+  if (!data.length) { toast('No data rows found', 'err'); return; }
+
+  var unit_channel_map = {};
+  data.forEach(function(row) {
+    var uid  = String(row[0]).trim();
+    var chs  = [];
+    row.forEach(function(v, i) {
+      if (i===0||i===fi) return;
+      if (v!==null&&v!==undefined&&v!==''&&!isNaN(Number(v))) chs.push(Number(v));
     });
-    return { ranges, ambiguous };
-  }
+    unit_channel_map[uid] = chs;
+  });
 
-  // ── Generate YAML ───────────────────────────────────────────
-  window.generateYaml = function() {
-    if (!parsedRows.length) { showToast('No file loaded', 'error'); return; }
-
-    const header   = (parsedRows[0] || []).map(v => String(v || '').trim().toLowerCase());
-    const floorIdx = header.indexOf('floor');
-    const dataRows = parsedRows.slice(1).filter(r => r[0] !== null && r[0] !== undefined && String(r[0]).trim() !== '');
-    if (!dataRows.length) { showToast('No data rows found', 'error'); return; }
-
-    const unit_channel_map = {};
-    dataRows.forEach(row => {
-      const unitId   = String(row[0]).trim();
-      const channels = row.map((v, i) => ({v, i}))
-        .filter(({v, i}) => i !== 0 && i !== floorIdx && v !== null && v !== undefined && v !== '' && !isNaN(Number(v)))
-        .map(({v}) => Number(v));
-      unit_channel_map[unitId] = channels;
+  var floor_channel_map = {};
+  var rt = document.getElementById('floor-ranges').value.trim();
+  if (rt) {
+    rt.split('\n').forEach(function(line) {
+      var m = line.match(/(\d+)\s*[:\-]\s*(\d+)\s*[-–]\s*(\d+)/);
+      if (m) floor_channel_map[parseInt(m[1])] = [parseInt(m[2]), parseInt(m[3])];
     });
-
-    const floor_channel_map = {};
-    const rangeText = document.getElementById('floor-ranges').value.trim();
-    if (rangeText) {
-      rangeText.split('\n').forEach(line => {
-        const m = line.match(/(\d+)\s*[:\-]\s*(\d+)\s*[-–]\s*(\d+)/);
-        if (m) floor_channel_map[parseInt(m[1])] = [parseInt(m[2]), parseInt(m[3])];
-      });
-    }
-
-    generatedConfig = { unit_channel_map, floor_channel_map };
-    document.getElementById('yaml-text').value = configToYaml(generatedConfig);
-    document.getElementById('btn-copy').disabled = false;
-    document.getElementById('btn-save').disabled = false;
-    document.getElementById('stat-units').textContent  = Object.keys(unit_channel_map).length + ' units';
-    document.getElementById('stat-floors').textContent = Object.keys(floor_channel_map).length + ' floors';
-    showToast('YAML generated', 'ok');
-  };
-
-  // ── YAML serialiser ─────────────────────────────────────────
-  function configToYaml(cfg) {
-    let out = 'unit_channel_map:\n';
-    for (const [k, v] of Object.entries(cfg.unit_channel_map))
-      out += `  ${k}: [${v.join(', ')}]\n`;
-    out += '\nfloor_channel_map:\n';
-    if (Object.keys(cfg.floor_channel_map).length)
-      for (const [fl, r] of Object.entries(cfg.floor_channel_map))
-        out += `  ${fl}: [${r.join(', ')}]\n`;
-    else
-      out += '  # No floor ranges defined\n';
-    return out;
   }
 
-  // ── Copy ────────────────────────────────────────────────────
-  window.copyYaml = function() {
-    navigator.clipboard.writeText(document.getElementById('yaml-text').value)
-      .then(() => showToast('Copied', 'ok'));
-  };
+  generatedConfig = { unit_channel_map:unit_channel_map, floor_channel_map:floor_channel_map };
+  document.getElementById('yaml-text').value = toYaml(generatedConfig);
+  document.getElementById('btn-copy').disabled = false;
+  document.getElementById('btn-save').disabled = false;
+  document.getElementById('s-units').textContent  = Object.keys(unit_channel_map).length + ' units';
+  document.getElementById('s-floors').textContent = Object.keys(floor_channel_map).length + ' floors';
+  toast('YAML generated', 'ok');
+}
 
-  // ── Save ────────────────────────────────────────────────────
-  window.saveYaml = async function() {
-    if (!generatedConfig) { showToast('Nothing to save', 'error'); return; }
-    try {
-      const res  = await fetch('/api/save_maps', {
-        method: 'POST', headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({config: generatedConfig})
-      });
-      const data = await res.json();
-      if (data.status === 'ok') {
-        showToast('maps.yaml saved ✓', 'ok');
-        loadCurrentYaml();
-      } else {
-        showToast('⚠ ' + data.message, 'error');
-      }
-    } catch(e) { showToast('Save failed: ' + e.message, 'error'); }
-  };
-
-  // ── Reload current YAML ─────────────────────────────────────
-  window.loadCurrentYaml = async function() {
-    try {
-      const res  = await fetch('/api/current_maps');
-      const data = await res.json();
-      if (data.status === 'ok')
-        document.getElementById('current-yaml-text').textContent = configToYaml(data.config);
-    } catch(e) { console.warn('Could not reload YAML', e); }
-  };
-
-  // ── Toast ────────────────────────────────────────────────────
-  let toastTimer;
-  function showToast(msg, type = 'ok') {
-    const t = document.getElementById('toast');
-    t.textContent = msg;
-    t.className = 'show ' + type;
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => { t.className = ''; }, 3000);
+function toYaml(cfg) {
+  var out = 'unit_channel_map:\n';
+  Object.keys(cfg.unit_channel_map).forEach(function(k) {
+    out += '  ' + k + ': [' + cfg.unit_channel_map[k].join(', ') + ']\n';
+  });
+  out += '\nfloor_channel_map:\n';
+  var fkeys = Object.keys(cfg.floor_channel_map);
+  if (fkeys.length) {
+    fkeys.forEach(function(fl) {
+      out += '  ' + fl + ': [' + cfg.floor_channel_map[fl].join(', ') + ']\n';
+    });
+  } else {
+    out += '  # No floor ranges defined\n';
   }
+  return out;
+}
 
-})();
+function copyYaml() {
+  navigator.clipboard.writeText(document.getElementById('yaml-text').value)
+    .then(function(){ toast('Copied', 'ok'); });
+}
+
+function saveYaml() {
+  if (!generatedConfig) { toast('Nothing to save', 'err'); return; }
+  fetch('/api/save_maps', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({config: generatedConfig})
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(d) {
+    if (d.status==='ok') { toast('maps.yaml saved ✓', 'ok'); reloadYaml(); }
+    else toast('⚠ ' + d.message, 'err');
+  })
+  .catch(function(e){ toast('Save failed: '+e.message, 'err'); });
+}
+
+function reloadYaml() {
+  fetch('/api/current_maps')
+    .then(function(r){ return r.json(); })
+    .then(function(d) {
+      if (d.status==='ok') document.getElementById('cur-text').textContent = toYaml(d.config);
+    })
+    .catch(function(){});
+}
+
+var toastTmr;
+function toast(msg, type) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'show ' + (type||'ok');
+  clearTimeout(toastTmr);
+  toastTmr = setTimeout(function(){ t.className=''; }, 3000);
+}
 </script>
 </body>
 </html>
