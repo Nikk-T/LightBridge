@@ -217,8 +217,11 @@ async def handle(websocket):
 
    elif command == "floor_highlight":
     col = payload.get("colour", [100, 150, 255])
+    floor = int(payload.get("floor", 0))
+    channels = FLOOR_CHANNEL_MAP.get(floor, [])
+    log.info(f"floor_highlight: floor={floor}, channels={len(channels)}, colour={col}")
     sls.suspend()
-    for ch in FLOOR_CHANNEL_MAP.get(payload.get("floor",0), []):
+    for ch in channels:
      sls.rgb_fadein(ch, *col)
     sls.resume()
 
